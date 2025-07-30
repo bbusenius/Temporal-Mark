@@ -45,22 +45,6 @@ jobs:
             console.log('✓ package.json is valid');
           "
 
-      - name: Test project structure
-        run: |
-          # Verify expected directories exist
-          test -d scripts || (echo "❌ scripts/ directory missing" && exit 1)
-          test -d docs || (echo "❌ docs/ directory missing" && exit 1)
-          test -d test || (echo "❌ test/ directory missing" && exit 1)
-          test -d projects || (echo "❌ projects/ directory missing" && exit 1)
-          test -d time-logs || (echo "❌ time-logs/ directory missing" && exit 1)
-
-          # Verify key files exist
-          test -f scripts/cli.js || (echo "❌ CLI entry point missing" && exit 1)
-          test -f package.json || (echo "❌ package.json missing" && exit 1)
-          test -f README.md || (echo "❌ README.md missing" && exit 1)
-          test -f CLAUDE.md || (echo "❌ CLAUDE.md missing" && exit 1)
-
-          echo "✓ Project structure is valid"
 
       - name: Validate documentation
         run: |

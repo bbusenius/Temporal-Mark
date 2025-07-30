@@ -45,7 +45,6 @@ jobs:
             console.log('✓ package.json is valid');
           "
 
-
       - name: Validate documentation
         run: |
           # Check that user guide exists and has content

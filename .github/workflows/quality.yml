@@ -1,0 +1,79 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint with detailed output
+        run: npm run lint -- --format=stylish
+
+      - name: Check Prettier formatting
+        run: npm run format -- --check --write=false
+
+      - name: Security audit
+        run: npm audit --audit-level=moderate
+
+      - name: Check for outdated dependencies
+        run: npm outdated || true
+
+      - name: Validate package.json
+        run: |
+          node -e "
+            const pkg = require('./package.json');
+            if (!pkg.name || !pkg.version || !pkg.description) {
+              throw new Error('package.json missing required fields');
+            }
+            console.log('✓ package.json is valid');
+          "
+
+      - name: Test project structure
+        run: |
+          # Verify expected directories exist
+          test -d scripts || (echo "❌ scripts/ directory missing" && exit 1)
+          test -d docs || (echo "❌ docs/ directory missing" && exit 1)
+          test -d test || (echo "❌ test/ directory missing" && exit 1)
+          test -d projects || (echo "❌ projects/ directory missing" && exit 1)
+          test -d time-logs || (echo "❌ time-logs/ directory missing" && exit 1)
+
+          # Verify key files exist
+          test -f scripts/cli.js || (echo "❌ CLI entry point missing" && exit 1)
+          test -f package.json || (echo "❌ package.json missing" && exit 1)
+          test -f README.md || (echo "❌ README.md missing" && exit 1)
+          test -f CLAUDE.md || (echo "❌ CLAUDE.md missing" && exit 1)
+
+          echo "✓ Project structure is valid"
+
+      - name: Validate documentation
+        run: |
+          # Check that user guide exists and has content
+          if [ ! -f docs/user-guide.md ] || [ ! -s docs/user-guide.md ]; then
+            echo "❌ User guide is missing or empty"
+            exit 1
+          fi
+
+          # Check that README has reasonable content
+          if [ $(wc -l < README.md) -lt 10 ]; then
+            echo "❌ README.md appears to be too short"
+            exit 1
+          fi
+
+          echo "✓ Documentation validation passed"

@@ -1,0 +1,64 @@
+{
+  "name": "temporal-mark",
+  "version": "1.0.0",
+  "description": "A Markdown-based time tracking system for logging and analyzing work hours across projects",
+  "main": "scripts/cli.js",
+  "scripts": {
+    "tm": "node scripts/cli.js",
+    "api": "node scripts/startServer.js",
+    "dev": "nodemon scripts/startServer.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "time-tracking",
+    "markdown",
+    "cli",
+    "productivity",
+    "project-management",
+    "obsidian",
+    "sqlite",
+    "wiki-links",
+    "reporting",
+    "validation"
+  ],
+  "author": "Temporal Mark Development Team",
+  "license": "MIT",
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0",
+    "inquirer": "^8.2.6",
+    "js-yaml": "^4.1.0",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.47.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-jsx-a11y": "^6.7.1",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "jest": "^29.6.4",
+    "prettier": "^3.0.2",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/temporal-mark/temporal-mark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/temporal-mark/temporal-mark/issues"
+  },
+  "homepage": "https://github.com/temporal-mark/temporal-mark#readme"
+}

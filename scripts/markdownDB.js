@@ -245,6 +245,37 @@ class MarkdownDB {
     });
   }
 
+  async getTimeEntriesInDateRange(startDate, endDate) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM time_entries 
+        WHERE date >= ? AND date <= ?
+        ORDER BY date, start_time
+      `;
+
+      this.db.all(query, [startDate, endDate], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          const entries = rows.map((row) => ({
+            id: row.id,
+            date: row.date,
+            startTime: row.start_time,
+            endTime: row.end_time,
+            durationHours: row.duration_hours,
+            task: row.task,
+            project: row.project,
+            tags: JSON.parse(row.tags || '[]'),
+            notes: row.notes,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+          }));
+          resolve(entries);
+        }
+      });
+    });
+  }
+
   async getProject(projectName) {
     return new Promise((resolve, reject) => {
       const query = 'SELECT * FROM projects WHERE project_name = ?';

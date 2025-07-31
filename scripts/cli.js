@@ -25,6 +25,66 @@ const packageJson = require('../package.json');
 
 program.version(packageJson.version);
 
+/**
+ * Calculate week boundaries (Monday to Sunday) for a given date
+ * @param {Date} date - Target date
+ * @returns {Object} Object with start and end date strings
+ */
+function calculateWeekBounds(date) {
+  const target = new Date(date);
+
+  // Get Monday of the week (day 0 = Sunday, day 1 = Monday)
+  const dayOfWeek = target.getDay();
+  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+  const monday = new Date(target);
+  monday.setDate(target.getDate() + daysToMonday);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  return {
+    start: monday.toISOString().split('T')[0],
+    end: sunday.toISOString().split('T')[0],
+  };
+}
+
+/**
+ * Calculate month boundaries for a given date or month string
+ * @param {string|undefined} date - Date string (YYYY-MM-DD) or month string (YYYY-MM), or undefined for current month
+ * @returns {Object} Object with start and end date strings
+ */
+function calculateMonthBounds(date) {
+  let year;
+  let month;
+
+  if (!date) {
+    // Current month
+    const now = new Date();
+    year = now.getFullYear();
+    month = now.getMonth();
+  } else if (date.match(/^\d{4}-\d{2}$/)) {
+    // YYYY-MM format
+    [year, month] = date.split('-').map(Number);
+    month -= 1; // Convert to 0-based month
+  } else if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    // YYYY-MM-DD format, extract month
+    const targetDate = new Date(date);
+    year = targetDate.getFullYear();
+    month = targetDate.getMonth();
+  } else {
+    throw new Error(`Invalid date format: ${date}. Use YYYY-MM-DD or YYYY-MM`);
+  }
+
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0); // Last day of month
+
+  return {
+    start: startDate.toISOString().split('T')[0],
+    end: endDate.toISOString().split('T')[0],
+  };
+}
+
 // Add command
 program
   .command('add')
@@ -371,6 +431,173 @@ program
       }
     } catch (error) {
       console.error(chalk.red('Failed to generate report:'), error.message);
+      process.exit(1);
+    }
+  });
+
+// Date range report command
+program
+  .command('range <start-date> <end-date>')
+  .description('Generate report for a custom date range')
+  .option(
+    '--group-by <field>',
+    'Group by field (departmentalGoal|strategicDirection|tag)',
+    'departmentalGoal'
+  )
+  .option('--format <format>', 'Output format (markdown|csv|json)', 'markdown')
+  .option('--sort <sort>', 'Sort order (alpha|hours|date)', 'date')
+  .option('--top-tasks <n>', 'Number of top tasks to show', '3')
+  .option('--save', 'Save report to file')
+  .action(async (startDate, endDate, options) => {
+    try {
+      const DateRangeReport = require('./reportDateRange');
+      const report = new DateRangeReport();
+
+      const reportContent = await report.generateReport(startDate, endDate, {
+        groupBy: options.groupBy,
+        format: options.format,
+        sort: options.sort,
+        topTasks: parseInt(options.topTasks, 10),
+      });
+
+      if (options.save) {
+        const filename = `date-range-report-${startDate}-to-${endDate}-${Date.now()}.${options.format}`;
+        const ReportSaver = require('./reportFiscalYear');
+        await ReportSaver.prototype.saveReportToFile.call(
+          {
+            reportType: 'date-range',
+            period: `${startDate}-to-${endDate}`,
+          },
+          reportContent,
+          options.format,
+          filename
+        );
+        console.log(chalk.green(`Report saved to: ${filename}`));
+      } else {
+        console.log(reportContent);
+      }
+    } catch (error) {
+      console.error(
+        chalk.red('Failed to generate date range report:'),
+        error.message
+      );
+      process.exit(1);
+    }
+  });
+
+// Weekly report command
+program
+  .command('weekly [date]')
+  .description(
+    'Generate report for current week or week containing specified date'
+  )
+  .option(
+    '--group-by <field>',
+    'Group by field (departmentalGoal|strategicDirection|tag)',
+    'departmentalGoal'
+  )
+  .option('--format <format>', 'Output format (markdown|csv|json)', 'markdown')
+  .option('--sort <sort>', 'Sort order (alpha|hours|date)', 'date')
+  .option('--top-tasks <n>', 'Number of top tasks to show', '3')
+  .option('--save', 'Save report to file')
+  .action(async (date, options) => {
+    try {
+      const DateRangeReport = require('./reportDateRange');
+      const report = new DateRangeReport();
+
+      // Calculate week boundaries (Monday to Sunday)
+      const targetDate = date ? new Date(date) : new Date();
+      const weekBounds = calculateWeekBounds(targetDate);
+
+      const reportContent = await report.generateReport(
+        weekBounds.start,
+        weekBounds.end,
+        {
+          groupBy: options.groupBy,
+          format: options.format,
+          sort: options.sort,
+          topTasks: parseInt(options.topTasks, 10),
+        }
+      );
+
+      if (options.save) {
+        const filename = `weekly-report-${weekBounds.start}-${Date.now()}.${options.format}`;
+        const ReportSaver = require('./reportFiscalYear');
+        await ReportSaver.prototype.saveReportToFile.call(
+          {
+            reportType: 'weekly',
+            period: `week-of-${weekBounds.start}`,
+          },
+          reportContent,
+          options.format,
+          filename
+        );
+        console.log(chalk.green(`Report saved to: ${filename}`));
+      } else {
+        console.log(reportContent);
+      }
+    } catch (error) {
+      console.error(
+        chalk.red('Failed to generate weekly report:'),
+        error.message
+      );
+      process.exit(1);
+    }
+  });
+
+// Monthly report command
+program
+  .command('monthly [date]')
+  .description('Generate report for current month or specified month (YYYY-MM)')
+  .option(
+    '--group-by <field>',
+    'Group by field (departmentalGoal|strategicDirection|tag)',
+    'departmentalGoal'
+  )
+  .option('--format <format>', 'Output format (markdown|csv|json)', 'markdown')
+  .option('--sort <sort>', 'Sort order (alpha|hours|date)', 'date')
+  .option('--top-tasks <n>', 'Number of top tasks to show', '3')
+  .option('--save', 'Save report to file')
+  .action(async (date, options) => {
+    try {
+      const DateRangeReport = require('./reportDateRange');
+      const report = new DateRangeReport();
+
+      // Calculate month boundaries
+      const monthBounds = calculateMonthBounds(date);
+
+      const reportContent = await report.generateReport(
+        monthBounds.start,
+        monthBounds.end,
+        {
+          groupBy: options.groupBy,
+          format: options.format,
+          sort: options.sort,
+          topTasks: parseInt(options.topTasks, 10),
+        }
+      );
+
+      if (options.save) {
+        const filename = `monthly-report-${monthBounds.start.substring(0, 7)}-${Date.now()}.${options.format}`;
+        const ReportSaver = require('./reportFiscalYear');
+        await ReportSaver.prototype.saveReportToFile.call(
+          {
+            reportType: 'monthly',
+            period: monthBounds.start.substring(0, 7),
+          },
+          reportContent,
+          options.format,
+          filename
+        );
+        console.log(chalk.green(`Report saved to: ${filename}`));
+      } else {
+        console.log(reportContent);
+      }
+    } catch (error) {
+      console.error(
+        chalk.red('Failed to generate monthly report:'),
+        error.message
+      );
       process.exit(1);
     }
   });

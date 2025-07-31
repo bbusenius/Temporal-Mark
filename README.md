@@ -27,7 +27,7 @@ npm install
 npm run tm -- --help
 
 # Run automated tests
-npm test                  # All tests (63 tests - all passing)
+npm test                  # All tests (111 tests - all passing)
 
 # Test the data layer (manual testing utility)
 node test/manual-test-data-layer.js
@@ -403,6 +403,13 @@ npm run tm -- tag design
 # Fiscal year report
 npm run tm -- report 2025-2026 --group-by strategicDirection --format markdown
 
+# Date range reports (NEW)
+npm run tm -- range 2025-07-01 2025-07-31          # Custom date range
+npm run tm -- weekly                                # Current week (Mon-Sun)
+npm run tm -- weekly 2025-07-29                     # Specific week containing this date
+npm run tm -- monthly                               # Current month
+npm run tm -- monthly 2025-07                       # Specific month (YYYY-MM format)
+
 # Archive management
 npm run tm -- archive --auto                    # Auto-archive old files (2+ years)
 npm run tm -- archive --year 2020-2021          # Archive specific fiscal year
@@ -423,6 +430,19 @@ npm run tm -- tags --standardize-all            # Standardize all tags
 npm run tm -- tags --validate "my-tag"          # Validate a specific tag
 npm run tm -- tags --normalize "My Tag!"        # Show normalized version
 npm run tm -- tags --report                     # Generate migration report
+
+# Date range reporting (NEW)
+npm run tm -- range 2025-07-01 2025-07-31      # Custom date range report
+npm run tm -- weekly                            # Current week (Monday-Sunday)
+npm run tm -- weekly 2025-07-29                 # Week containing specific date
+npm run tm -- monthly                           # Current month
+npm run tm -- monthly 2025-07                   # Specific month (YYYY-MM)
+npm run tm -- monthly 2025-07-15                # Month from specific date
+
+# Advanced date range options
+npm run tm -- range 2025-07-01 2025-07-31 --group-by strategicDirection --format csv
+npm run tm -- weekly --group-by tag --sort hours --save
+npm run tm -- monthly 2025-07 --top-tasks 5 --format json
 
 # Input validation
 npm run tm -- validate --date "2025-07-29"     # Validate date format
@@ -578,7 +598,7 @@ Temporal Mark includes comprehensive automated testing and manual testing utilit
 Run the comprehensive test suite to validate all functionality:
 
 ```bash
-# Run all tests (63 tests - all passing)
+# Run all tests (111 tests - all passing)
 npm test
 
 # Run tests with coverage (if configured)
@@ -587,12 +607,14 @@ npm test -- --coverage
 
 ### Test Coverage
 
-The automated test suite (63 tests) covers all core functionality:
+The automated test suite (111 tests) covers all core functionality:
 
 - **Time Parsing**: Converting time strings, calculating durations, handling overnight entries
 - **Data Validation**: Date/time formats, fiscal years, task descriptions, field validation
 - **Tag Processing**: Normalization, validation, standardization of tags
 - **Business Logic**: Time overlaps, gaps, duration calculations, entry processing
+- **Date Range Reporting**: Custom ranges, weekly/monthly reports, all output formats
+- **Database Operations**: Race condition fixes, indexing, query optimization
 - **Integration**: Complete workflow testing for time entry processing
 - **Edge Cases**: Error conditions, boundary values, invalid inputs
 
@@ -633,7 +655,7 @@ npm run format
 ### Testing Best Practices
 
 1. **Run tests before commits**: Always run `npm test` before committing changes
-2. **All tests must pass**: 63/63 tests passing ensures system reliability
+2. **All tests must pass**: 111/111 tests passing ensures system reliability
 3. **Manual testing for complex workflows**: Use manual testing guides for end-to-end validation
 4. **Database testing**: Delete and recreate database to test auto-indexing
 5. **CLI testing**: Test commands interactively to verify user experience

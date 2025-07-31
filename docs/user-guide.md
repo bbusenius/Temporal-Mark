@@ -1022,9 +1022,73 @@ summary: 'Breaks, personal time, and unproductive periods'
 
 ## Reporting
 
+Temporal Mark provides comprehensive reporting capabilities for both long-term fiscal year analysis and short-term date range tracking.
+
+### Date Range Reports (NEW)
+
+Generate reports for specific time periods - perfect for weekly reviews, monthly summaries, or custom date ranges.
+
+#### Basic Date Range Commands
+
+```bash
+# Custom date range (any start and end date)
+npm run tm -- range 2025-07-01 2025-07-31
+
+# Current week (Monday to Sunday)
+npm run tm -- weekly
+
+# Specific week containing the given date
+npm run tm -- weekly 2025-07-29
+
+# Current month
+npm run tm -- monthly
+
+# Specific month (YYYY-MM format)
+npm run tm -- monthly 2025-07
+
+# Specific month from a date (extracts month automatically)
+npm run tm -- monthly 2025-07-15
+```
+
+#### Advanced Date Range Options
+
+All date range commands support the same options as fiscal year reports:
+
+```bash
+# Group by strategic direction with CSV output
+npm run tm -- range 2025-07-01 2025-07-31 --group-by strategicDirection --format csv
+
+# Weekly report grouped by tags, sorted by hours
+npm run tm -- weekly --group-by tag --sort hours --format markdown
+
+# Monthly report with more top tasks shown
+npm run tm -- monthly 2025-07 --top-tasks 5 --save
+
+# Custom range with JSON output
+npm run tm -- range 2025-07-15 2025-07-17 --format json --group-by departmentalGoal
+```
+
+#### Date Range Report Features
+
+- **Flexible time periods**: Any date range from single days to multiple months
+- **Week boundaries**: Weeks run Monday to Sunday (ISO 8601 standard)
+- **Month boundaries**: Automatic first-to-last day calculations with leap year support
+- **Same grouping options**: departmentalGoal, strategicDirection, tag
+- **Multiple formats**: markdown, csv, json
+- **Top tasks**: Shows most time-consuming tasks per project
+- **Gap analysis**: Identifies non-working periods within range
+
+#### Use Cases for Date Range Reports
+
+- **Weekly reviews**: `npm run tm -- weekly` for sprint retrospectives
+- **Monthly summaries**: `npm run tm -- monthly` for progress reports
+- **Project milestones**: Custom ranges for specific project phases
+- **Time audits**: Analyze specific problem periods
+- **Client billing**: Generate reports for billing periods
+
 ### Fiscal Year Reports
 
-Generate comprehensive reports for analysis:
+Generate comprehensive annual reports for analysis:
 
 ```bash
 # Basic report (Markdown format, grouped by departmental goal)
@@ -1037,21 +1101,70 @@ npm run tm -- report 2025-2026 --format csv --group-by strategicDirection
 npm run tm -- report 2025-2026 --format json --sort hours --save
 ```
 
-### Report Options
+### Report Options (All Report Types)
 
 - **Group by**: `departmentalGoal`, `strategicDirection`, `tag`
 - **Format**: `markdown`, `csv`, `json`
 - **Sort**: `date`, `alpha`, `hours`
 - **Top tasks**: `--top-tasks 5` (shows top N tasks per project)
+- **Save**: `--save` flag saves report to `reports/` directory
 
 ### Understanding Reports
 
-Reports include:
+All reports (fiscal year and date range) include:
 
 - **Summary statistics**: Total hours, project count, date range
 - **Project breakdowns**: Hours per project with top tasks
 - **Metadata analysis**: Departmental goals and strategic directions
-- **Tag usage**: Most common tags and their distribution
+- **Time distribution**: Shows how time is allocated across categories
+- **Top tasks per project**: Most time-consuming activities
+
+#### Sample Report Output (Markdown)
+
+```markdown
+# Time Tracking Report: 2025-07-15 to 2025-07-17
+
+## Summary
+
+**Date Range:** 2025-07-15 to 2025-07-17  
+**Total Hours:** 10.5  
+**Total Entries:** 8  
+**Projects:** 2  
+**Days with Entries:** 3  
+**Grouped By:** Departmental Goal
+
+## Technology
+
+_Total: 6.0 hours_
+
+### Project Alpha
+
+**Hours:** 6.0 | **Entries:** 5 | **Status:** Active
+
+First test project for range reporting.
+
+**Top Tasks:**
+
+- Testing and debugging (2.0h)
+- Initial setup and planning (1.5h)
+- Database design (1.0h)
+
+## Marketing
+
+_Total: 3.5 hours_
+
+### Project Beta
+
+**Hours:** 3.5 | **Entries:** 3 | **Status:** Active
+
+Second test project for range reporting.
+
+**Top Tasks:**
+
+- UI mockups (1.5h)
+- Report generation (1.0h)
+- Data analysis (1.0h)
+```
 
 ## Database Management
 

@@ -398,6 +398,19 @@ class DataIndexer {
   }
 
   /**
+   * Get time entries within a date range (inclusive)
+   * Retrieves all time entries between startDate and endDate
+   *
+   * @async
+   * @param {string} startDate - Start date in YYYY-MM-DD format
+   * @param {string} endDate - End date in YYYY-MM-DD format
+   * @returns {Promise<Array<Object>>} Array of time entries within the date range
+   */
+  async getEntriesInDateRange(startDate, endDate) {
+    return this.db.getTimeEntriesInDateRange(startDate, endDate);
+  }
+
+  /**
    * Get project entries with pagination for API endpoint
    * Retrieves time entries for a specific project with limit/offset support
    *

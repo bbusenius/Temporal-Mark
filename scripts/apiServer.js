@@ -123,6 +123,12 @@ class ApiServer {
           'GET /api/project/:name': 'Get project summary',
           'GET /api/tag/:tag': 'Get tag summary',
           'GET /api/report/:fiscalYear': 'Generate fiscal year report',
+          'GET /api/range/:startDate/:endDate':
+            'Generate custom date range report',
+          'GET /api/weekly': 'Generate current week report',
+          'GET /api/weekly/:date': 'Generate weekly report for date',
+          'GET /api/monthly': 'Generate current month report',
+          'GET /api/monthly/:month': 'Generate monthly report (YYYY-MM format)',
         },
         documentation: '/api/docs',
       });
@@ -136,6 +142,7 @@ class ApiServer {
     this.setupProjectRoute();
     this.setupTagRoute();
     this.setupReportRoute();
+    this.setupDateRangeRoutes();
   }
 
   /**
@@ -493,6 +500,345 @@ class ApiServer {
         });
       }
     });
+  }
+
+  /**
+   * Set up date range reporting endpoints
+   * @private
+   */
+  setupDateRangeRoutes() {
+    // GET /api/range/:startDate/:endDate - Custom date range report
+    this.app.get('/api/range/:startDate/:endDate', async (req, res) => {
+      try {
+        const { startDate, endDate } = req.params;
+        const {
+          groupBy = 'departmentalGoal',
+          format: _format = 'json',
+          sort = 'date',
+          topTasks = 3,
+        } = req.query;
+
+        // Generate report using DateRangeReport module
+        const DateRangeReport = require('./reportDateRange');
+        const reportGen = new DateRangeReport();
+
+        const report = await reportGen.generateReport(startDate, endDate, {
+          groupBy,
+          format: 'json', // Always return JSON for API
+          sort,
+          topTasks: parseInt(topTasks, 10),
+        });
+
+        res.json({
+          reportType: 'dateRange',
+          startDate,
+          endDate,
+          report: JSON.parse(report),
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            groupBy,
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          },
+        });
+      } catch (error) {
+        this.errorLogger.logError('API /range endpoint error', error);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message.includes('No time entries found')
+            ? 'No time entries found for the specified date range'
+            : 'Failed to generate date range report',
+        });
+      }
+    });
+
+    // GET /api/weekly - Current week report
+    this.app.get('/api/weekly', async (req, res) => {
+      try {
+        const {
+          groupBy = 'departmentalGoal',
+          format: _format = 'json',
+          sort = 'date',
+          topTasks = 3,
+        } = req.query;
+
+        // Calculate current week bounds
+        const bounds = this.calculateWeekBounds(new Date());
+
+        // Generate report using DateRangeReport module
+        const DateRangeReport = require('./reportDateRange');
+        const reportGen = new DateRangeReport();
+
+        const report = await reportGen.generateReport(
+          bounds.start,
+          bounds.end,
+          {
+            groupBy,
+            format: 'json',
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          }
+        );
+
+        res.json({
+          reportType: 'weekly',
+          weekOf: bounds.start,
+          startDate: bounds.start,
+          endDate: bounds.end,
+          report: JSON.parse(report),
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            groupBy,
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          },
+        });
+      } catch (error) {
+        this.errorLogger.logError('API /weekly endpoint error', error);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message.includes('No time entries found')
+            ? 'No time entries found for the current week'
+            : 'Failed to generate weekly report',
+        });
+      }
+    });
+
+    // GET /api/weekly/:date - Weekly report for specific date
+    this.app.get('/api/weekly/:date', async (req, res) => {
+      try {
+        const { date } = req.params;
+        const {
+          groupBy = 'departmentalGoal',
+          format: _format = 'json',
+          sort = 'date',
+          topTasks = 3,
+        } = req.query;
+
+        // Validate date format
+        const dateValidation = this.validator.validateDate(date);
+        if (!dateValidation.isValid) {
+          return res.status(400).json({
+            error: 'Invalid date format',
+            expected: 'YYYY-MM-DD',
+            received: date,
+            validation: dateValidation,
+          });
+        }
+
+        // Calculate week bounds for the specified date
+        const bounds = this.calculateWeekBounds(new Date(date));
+
+        // Generate report using DateRangeReport module
+        const DateRangeReport = require('./reportDateRange');
+        const reportGen = new DateRangeReport();
+
+        const report = await reportGen.generateReport(
+          bounds.start,
+          bounds.end,
+          {
+            groupBy,
+            format: 'json',
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          }
+        );
+
+        res.json({
+          reportType: 'weekly',
+          weekOf: bounds.start,
+          targetDate: date,
+          startDate: bounds.start,
+          endDate: bounds.end,
+          report: JSON.parse(report),
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            groupBy,
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          },
+        });
+      } catch (error) {
+        this.errorLogger.logError('API /weekly/:date endpoint error', error);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message.includes('No time entries found')
+            ? `No time entries found for week containing ${req.params.date}`
+            : 'Failed to generate weekly report',
+        });
+      }
+    });
+
+    // GET /api/monthly - Current month report
+    this.app.get('/api/monthly', async (req, res) => {
+      try {
+        const {
+          groupBy = 'departmentalGoal',
+          format: _format = 'json',
+          sort = 'date',
+          topTasks = 3,
+        } = req.query;
+
+        // Calculate current month bounds
+        const bounds = this.calculateMonthBounds();
+
+        // Generate report using DateRangeReport module
+        const DateRangeReport = require('./reportDateRange');
+        const reportGen = new DateRangeReport();
+
+        const report = await reportGen.generateReport(
+          bounds.start,
+          bounds.end,
+          {
+            groupBy,
+            format: 'json',
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          }
+        );
+
+        res.json({
+          reportType: 'monthly',
+          month: bounds.start.substring(0, 7), // YYYY-MM format
+          startDate: bounds.start,
+          endDate: bounds.end,
+          report: JSON.parse(report),
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            groupBy,
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          },
+        });
+      } catch (error) {
+        this.errorLogger.logError('API /monthly endpoint error', error);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message.includes('No time entries found')
+            ? 'No time entries found for the current month'
+            : 'Failed to generate monthly report',
+        });
+      }
+    });
+
+    // GET /api/monthly/:month - Monthly report for specific month
+    this.app.get('/api/monthly/:month', async (req, res) => {
+      try {
+        const { month } = req.params;
+        const {
+          groupBy = 'departmentalGoal',
+          format: _format = 'json',
+          sort = 'date',
+          topTasks = 3,
+        } = req.query;
+
+        // Calculate month bounds for the specified month
+        const bounds = this.calculateMonthBounds(month);
+
+        // Generate report using DateRangeReport module
+        const DateRangeReport = require('./reportDateRange');
+        const reportGen = new DateRangeReport();
+
+        const report = await reportGen.generateReport(
+          bounds.start,
+          bounds.end,
+          {
+            groupBy,
+            format: 'json',
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          }
+        );
+
+        res.json({
+          reportType: 'monthly',
+          month: month.substring(0, 7), // YYYY-MM format
+          startDate: bounds.start,
+          endDate: bounds.end,
+          report: JSON.parse(report),
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            groupBy,
+            sort,
+            topTasks: parseInt(topTasks, 10),
+          },
+        });
+      } catch (error) {
+        this.errorLogger.logError('API /monthly/:month endpoint error', error);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: error.message.includes('No time entries found')
+            ? `No time entries found for ${req.params.month}`
+            : error.message.includes('Invalid date format')
+              ? 'Invalid month format. Use YYYY-MM or YYYY-MM-DD'
+              : 'Failed to generate monthly report',
+        });
+      }
+    });
+  }
+
+  /**
+   * Calculate week boundaries (Monday to Sunday) for a given date
+   * @param {Date} date - Target date
+   * @returns {Object} Object with start and end date strings
+   * @private
+   */
+  calculateWeekBounds(date) {
+    const target = new Date(date);
+
+    // Get Monday of the week (day 0 = Sunday, day 1 = Monday)
+    const dayOfWeek = target.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const monday = new Date(target);
+    monday.setDate(target.getDate() + daysToMonday);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    return {
+      start: monday.toISOString().split('T')[0],
+      end: sunday.toISOString().split('T')[0],
+    };
+  }
+
+  /**
+   * Calculate month boundaries for a given date or month string
+   * @param {string|undefined} date - Date string (YYYY-MM-DD) or month string (YYYY-MM), or undefined for current month
+   * @returns {Object} Object with start and end date strings
+   * @private
+   */
+  calculateMonthBounds(date) {
+    let year;
+    let month;
+
+    if (!date) {
+      // Current month
+      const now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth();
+    } else if (date.match(/^\d{4}-\d{2}$/)) {
+      // YYYY-MM format
+      [year, month] = date.split('-').map(Number);
+      month -= 1; // Convert to 0-based month
+    } else if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // YYYY-MM-DD format, extract month
+      const targetDate = new Date(date);
+      year = targetDate.getFullYear();
+      month = targetDate.getMonth();
+    } else {
+      throw new Error(
+        `Invalid date format: ${date}. Use YYYY-MM-DD or YYYY-MM`
+      );
+    }
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0); // Last day of month
+
+    return {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0],
+    };
   }
 
   /**

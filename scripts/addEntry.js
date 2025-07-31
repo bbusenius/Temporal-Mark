@@ -72,7 +72,7 @@ class AddEntry {
       if (options.file) {
         // Batch mode - read from JSON file
         entryData = await this.processBatchFile(options.file);
-      } else if (this.hasAllRequiredFlags(options)) {
+      } else if (AddEntry.hasAllRequiredFlags(options)) {
         // Non-interactive mode - use provided flags
         entryData = await this.processNonInteractive(options);
       } else {
@@ -104,7 +104,7 @@ class AddEntry {
   /**
    * Check if all required flags are provided for non-interactive mode
    */
-  hasAllRequiredFlags(options) {
+  static hasAllRequiredFlags(options) {
     const required = ['date', 'start', 'end', 'task', 'project'];
     return required.every((field) => options[field]);
   }
@@ -131,8 +131,11 @@ class AddEntry {
     }
 
     const results = [];
+    // eslint-disable-next-line no-restricted-syntax
     for (const entry of entries) {
+      // eslint-disable-next-line no-await-in-loop
       const processedEntry = await this.validateAndProcessEntry(entry);
+      // eslint-disable-next-line no-await-in-loop
       const result = await this.saveEntry(processedEntry);
       results.push(result);
       console.log(
@@ -195,7 +198,7 @@ class AddEntry {
         type: 'input',
         name: 'date',
         message: 'Date (YYYY-MM-DD):',
-        default: options.date || this.getCurrentDate(),
+        default: options.date || AddEntry.getCurrentDate(),
         validate: (input) =>
           this.timeParser.isValidDate(input) ||
           'Please enter a valid date (YYYY-MM-DD)',
@@ -433,7 +436,7 @@ class AddEntry {
    * Append entry to appropriate Markdown time log file
    */
   async appendToMarkdownFile(entry) {
-    const fiscalYear = this.getFiscalYearFromDate(entry.date);
+    const fiscalYear = AddEntry.getFiscalYearFromDate(entry.date);
     const filePath = path.join(
       this.dataIndexer.timeLogsDir,
       `time-log-${fiscalYear}.md`
@@ -449,7 +452,7 @@ class AddEntry {
     let content = fs.readFileSync(filePath, 'utf8');
 
     // Format the entry
-    const monthYear = this.getMonthYearFromDate(entry.date);
+    const monthYear = AddEntry.getMonthYearFromDate(entry.date);
     const dateHeader = `### ${entry.date}`;
     const tagsStr = entry.tags.length > 0 ? ` [${entry.tags.join(', ')}]` : '';
     const entryLine = `- **${entry.startTime}-${entry.endTime}**: ${entry.task} [[${entry.project}]]${tagsStr}`;
@@ -474,6 +477,7 @@ class AddEntry {
 
       // Find insertion point for new date section
       let insertIndex = content.length;
+      // eslint-disable-next-line no-restricted-syntax
       for (const dateMatch of dates) {
         if (entry.date < dateMatch.date) {
           insertIndex = dateMatch.index;
@@ -513,6 +517,7 @@ class AddEntry {
 
       // Find insertion point based on start time
       let insertIndex = sectionEnd;
+      // eslint-disable-next-line no-restricted-syntax
       for (const existingEntry of existingEntries) {
         if (entry.startTime < existingEntry.startTime) {
           insertIndex = existingEntry.index;
@@ -570,14 +575,14 @@ class AddEntry {
   /**
    * Get current date in YYYY-MM-DD format
    */
-  getCurrentDate() {
+  static getCurrentDate() {
     return new Date().toISOString().split('T')[0];
   }
 
   /**
    * Get fiscal year from date (assumes July-June fiscal year)
    */
-  getFiscalYearFromDate(dateStr) {
+  static getFiscalYearFromDate(dateStr) {
     const date = new Date(dateStr);
     const year = date.getFullYear();
     const month = date.getMonth(); // 0-based
@@ -592,7 +597,7 @@ class AddEntry {
   /**
    * Get month-year string from date
    */
-  getMonthYearFromDate(dateStr) {
+  static getMonthYearFromDate(dateStr) {
     const date = new Date(dateStr);
     const monthNames = [
       'January',

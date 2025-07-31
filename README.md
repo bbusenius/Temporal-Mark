@@ -537,6 +537,50 @@ curl http://localhost:3000/api/tag/development?limit=10
 curl "http://localhost:3000/api/report/2025-2026?groupBy=tag&sort=hours&topTasks=3"
 ```
 
+#### GET /api/range/:startDate/:endDate - Custom Date Range Report
+
+```bash
+# Generate custom date range report
+curl "http://localhost:3000/api/range/2025-07-01/2025-07-31"
+
+# With advanced options
+curl "http://localhost:3000/api/range/2025-07-01/2025-07-31?groupBy=strategicDirection&sort=hours&topTasks=5"
+```
+
+#### GET /api/weekly - Current Week Report
+
+```bash
+# Generate current week report (Monday-Sunday)
+curl "http://localhost:3000/api/weekly"
+
+# With grouping options
+curl "http://localhost:3000/api/weekly?groupBy=tag&sort=alpha&topTasks=2"
+```
+
+#### GET /api/weekly/:date - Weekly Report for Specific Date
+
+```bash
+# Generate weekly report containing the specified date
+curl "http://localhost:3000/api/weekly/2025-07-29"
+```
+
+#### GET /api/monthly - Current Month Report
+
+```bash
+# Generate current month report
+curl "http://localhost:3000/api/monthly"
+```
+
+#### GET /api/monthly/:month - Monthly Report for Specific Month
+
+```bash
+# Generate monthly report for specific month (YYYY-MM format)
+curl "http://localhost:3000/api/monthly/2025-07"
+
+# Or using a specific date (extracts the month)
+curl "http://localhost:3000/api/monthly/2025-07-15"
+```
+
 ### API Features
 
 - **Rate limiting**: 100 requests per 15 minutes per IP
@@ -561,7 +605,7 @@ Temporal Mark is architecturally prepared for Model Context Protocol (MCP) integ
 
 The system includes an `mcpIntegration.js` module that defines:
 
-1. **8 Available MCP Tools**:
+1. **11 Available MCP Tools**:
    - `temporal_mark_add_entry` - Add new time entries
    - `temporal_mark_start_tracking` - Start real-time time tracking
    - `temporal_mark_finish_tracking` - Finish active time entry
@@ -570,6 +614,9 @@ The system includes an `mcpIntegration.js` module that defines:
    - `temporal_mark_get_tag_summary` - Get tag-based reporting
    - `temporal_mark_generate_report` - Generate fiscal year reports
    - `temporal_mark_validate_entry` - Validate entries without saving
+   - `temporal_mark_generate_date_range_report` - Generate custom date range reports
+   - `temporal_mark_generate_weekly_report` - Generate weekly reports
+   - `temporal_mark_generate_monthly_report` - Generate monthly reports
 
 2. **2 Planned MCP Resources**:
    - `temporal://projects` - Complete project listings with metadata
@@ -598,7 +645,7 @@ Temporal Mark includes comprehensive automated testing and manual testing utilit
 Run the comprehensive test suite to validate all functionality:
 
 ```bash
-# Run all tests (111 tests - all passing)
+# Run all tests (123 tests - all passing)
 npm test
 
 # Run tests with coverage (if configured)
@@ -607,13 +654,13 @@ npm test -- --coverage
 
 ### Test Coverage
 
-The automated test suite (111 tests) covers all core functionality:
+The automated test suite (123 tests) covers all core functionality:
 
 - **Time Parsing**: Converting time strings, calculating durations, handling overnight entries
 - **Data Validation**: Date/time formats, fiscal years, task descriptions, field validation
 - **Tag Processing**: Normalization, validation, standardization of tags
 - **Business Logic**: Time overlaps, gaps, duration calculations, entry processing
-- **Date Range Reporting**: Custom ranges, weekly/monthly reports, all output formats
+- **Date Range Reporting**: Custom ranges, weekly/monthly reports, all output formats, REST API endpoints
 - **Database Operations**: Race condition fixes, indexing, query optimization
 - **Integration**: Complete workflow testing for time entry processing
 - **Edge Cases**: Error conditions, boundary values, invalid inputs

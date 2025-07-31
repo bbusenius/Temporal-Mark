@@ -221,6 +221,118 @@ class MCPIntegration {
             required: ['date', 'startTime', 'endTime', 'task', 'project'],
           },
         },
+        {
+          name: 'temporal_mark_generate_date_range_report',
+          description:
+            'Generate custom date range report with various grouping and formatting options',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              startDate: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+                description: 'Start date in YYYY-MM-DD format',
+              },
+              endDate: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+                description: 'End date in YYYY-MM-DD format',
+              },
+              groupBy: {
+                type: 'string',
+                enum: ['departmentalGoal', 'strategicDirection', 'tag'],
+                default: 'departmentalGoal',
+                description: 'How to group the report data',
+              },
+              sort: {
+                type: 'string',
+                enum: ['date', 'alpha', 'hours'],
+                default: 'date',
+                description: 'How to sort projects within each group',
+              },
+              topTasks: {
+                type: 'integer',
+                minimum: 0,
+                maximum: 10,
+                default: 3,
+                description: 'Number of top tasks to show per project',
+              },
+            },
+            required: ['startDate', 'endDate'],
+          },
+        },
+        {
+          name: 'temporal_mark_generate_weekly_report',
+          description:
+            'Generate weekly report for current week or week containing a specific date',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              date: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+                description:
+                  'Date to determine week (optional, defaults to current week)',
+              },
+              groupBy: {
+                type: 'string',
+                enum: ['departmentalGoal', 'strategicDirection', 'tag'],
+                default: 'departmentalGoal',
+                description: 'How to group the report data',
+              },
+              sort: {
+                type: 'string',
+                enum: ['date', 'alpha', 'hours'],
+                default: 'date',
+                description: 'How to sort projects within each group',
+              },
+              topTasks: {
+                type: 'integer',
+                minimum: 0,
+                maximum: 10,
+                default: 3,
+                description: 'Number of top tasks to show per project',
+              },
+            },
+            required: [],
+          },
+        },
+        {
+          name: 'temporal_mark_generate_monthly_report',
+          description:
+            'Generate monthly report for current month or specific month',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              month: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}(-\\d{2})?$',
+                description:
+                  'Month in YYYY-MM or YYYY-MM-DD format (optional, defaults to current month)',
+              },
+              groupBy: {
+                type: 'string',
+                enum: ['departmentalGoal', 'strategicDirection', 'tag'],
+                default: 'departmentalGoal',
+                description: 'How to group the report data',
+              },
+              sort: {
+                type: 'string',
+                enum: ['date', 'alpha', 'hours'],
+                default: 'date',
+                description: 'How to sort projects within each group',
+              },
+              topTasks: {
+                type: 'integer',
+                minimum: 0,
+                maximum: 10,
+                default: 3,
+                description: 'Number of top tasks to show per project',
+              },
+            },
+            required: [],
+          },
+        },
       ],
       resources: [
         {
@@ -274,6 +386,15 @@ class MCPIntegration {
 
         case 'temporal_mark_validate_entry':
           return this.validateEntry(args);
+
+        case 'temporal_mark_generate_date_range_report':
+          return this.generateDateRangeReport(args);
+
+        case 'temporal_mark_generate_weekly_report':
+          return this.generateWeeklyReport(args);
+
+        case 'temporal_mark_generate_monthly_report':
+          return this.generateMonthlyReport(args);
 
         default:
           throw new Error(`Unknown tool: ${toolName}`);
@@ -862,6 +983,218 @@ class MCPIntegration {
     }
 
     return duration / 60; // Convert to hours
+  }
+
+  /**
+   * Generate date range report via MCP interface
+   * @async
+   * @param {Object} args - Report arguments
+   * @returns {Promise<Object>} Date range report result
+   */
+  async generateDateRangeReport(args) {
+    const {
+      startDate,
+      endDate,
+      groupBy = 'departmentalGoal',
+      sort = 'date',
+      topTasks = 3,
+    } = args;
+
+    try {
+      const DateRangeReport = require('./reportDateRange');
+      const reportGen = new DateRangeReport();
+
+      const report = await reportGen.generateReport(startDate, endDate, {
+        groupBy,
+        format: 'json',
+        sort,
+        topTasks,
+      });
+
+      return {
+        success: true,
+        reportType: 'dateRange',
+        startDate,
+        endDate,
+        report: JSON.parse(report),
+        options: { groupBy, sort, topTasks },
+        mcpCompatible: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        reportType: 'dateRange',
+        startDate,
+        endDate,
+        mcpCompatible: true,
+      };
+    }
+  }
+
+  /**
+   * Generate weekly report via MCP interface
+   * @async
+   * @param {Object} args - Report arguments
+   * @returns {Promise<Object>} Weekly report result
+   */
+  async generateWeeklyReport(args) {
+    const {
+      date,
+      groupBy = 'departmentalGoal',
+      sort = 'date',
+      topTasks = 3,
+    } = args;
+
+    try {
+      // Calculate week bounds
+      const targetDate = date ? new Date(date) : new Date();
+      const bounds = this.calculateWeekBounds(targetDate);
+
+      const DateRangeReport = require('./reportDateRange');
+      const reportGen = new DateRangeReport();
+
+      const report = await reportGen.generateReport(bounds.start, bounds.end, {
+        groupBy,
+        format: 'json',
+        sort,
+        topTasks,
+      });
+
+      return {
+        success: true,
+        reportType: 'weekly',
+        weekOf: bounds.start,
+        targetDate: date || new Date().toISOString().split('T')[0],
+        startDate: bounds.start,
+        endDate: bounds.end,
+        report: JSON.parse(report),
+        options: { groupBy, sort, topTasks },
+        mcpCompatible: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        reportType: 'weekly',
+        targetDate: date,
+        mcpCompatible: true,
+      };
+    }
+  }
+
+  /**
+   * Generate monthly report via MCP interface
+   * @async
+   * @param {Object} args - Report arguments
+   * @returns {Promise<Object>} Monthly report result
+   */
+  async generateMonthlyReport(args) {
+    const {
+      month,
+      groupBy = 'departmentalGoal',
+      sort = 'date',
+      topTasks = 3,
+    } = args;
+
+    try {
+      // Calculate month bounds
+      const bounds = this.calculateMonthBounds(month);
+
+      const DateRangeReport = require('./reportDateRange');
+      const reportGen = new DateRangeReport();
+
+      const report = await reportGen.generateReport(bounds.start, bounds.end, {
+        groupBy,
+        format: 'json',
+        sort,
+        topTasks,
+      });
+
+      return {
+        success: true,
+        reportType: 'monthly',
+        month: bounds.start.substring(0, 7), // YYYY-MM format
+        targetMonth: month,
+        startDate: bounds.start,
+        endDate: bounds.end,
+        report: JSON.parse(report),
+        options: { groupBy, sort, topTasks },
+        mcpCompatible: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        reportType: 'monthly',
+        targetMonth: month,
+        mcpCompatible: true,
+      };
+    }
+  }
+
+  /**
+   * Calculate week boundaries (Monday to Sunday) for a given date
+   * @param {Date} date - Target date
+   * @returns {Object} Object with start and end date strings
+   * @private
+   */
+  calculateWeekBounds(date) {
+    const target = new Date(date);
+
+    // Get Monday of the week (day 0 = Sunday, day 1 = Monday)
+    const dayOfWeek = target.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const monday = new Date(target);
+    monday.setDate(target.getDate() + daysToMonday);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    return {
+      start: monday.toISOString().split('T')[0],
+      end: sunday.toISOString().split('T')[0],
+    };
+  }
+
+  /**
+   * Calculate month boundaries for a given date or month string
+   * @param {string|undefined} date - Date string (YYYY-MM-DD) or month string (YYYY-MM), or undefined for current month
+   * @returns {Object} Object with start and end date strings
+   * @private
+   */
+  calculateMonthBounds(date) {
+    let year;
+    let month;
+
+    if (!date) {
+      // Current month
+      const now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth();
+    } else if (date.match(/^\d{4}-\d{2}$/)) {
+      // YYYY-MM format
+      [year, month] = date.split('-').map(Number);
+      month -= 1; // Convert to 0-based month
+    } else if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // YYYY-MM-DD format, extract month
+      const targetDate = new Date(date);
+      year = targetDate.getFullYear();
+      month = targetDate.getMonth();
+    } else {
+      throw new Error(
+        `Invalid date format: ${date}. Use YYYY-MM-DD or YYYY-MM`
+      );
+    }
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0); // Last day of month
+
+    return {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0],
+    };
   }
 
   /**

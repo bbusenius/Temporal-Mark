@@ -506,7 +506,7 @@ class DateRangeReport {
    */
   truncateText(text, length) {
     if (!text || text.length <= length) return text;
-    return text.substring(0, length - 3) + '...';
+    return `${text.substring(0, length - 3)}...`;
   }
 
   /**

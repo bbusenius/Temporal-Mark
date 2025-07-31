@@ -129,15 +129,27 @@ class DataIndexer {
         );
       });
 
-      // Insert valid projects into database
+      // Ensure database is fully ready before processing projects
+      await new Promise((resolve) => {
+        setTimeout(() => resolve(), 100);
+      });
+
+      // Insert valid projects into database (sequentially to avoid connection issues)
       for (const project of projects) {
         try {
           await this.db.insertProject(project);
           results.indexed++;
           console.log(`✓ Indexed project: ${project.projectName}`);
+          // Small delay to ensure database stability
+          await new Promise((resolve) => {
+            setTimeout(() => resolve(), 10);
+          });
         } catch (error) {
           results.errors.push(
             `Database error for project ${project.projectName}: ${error.message}`
+          );
+          console.error(
+            `✗ Failed to index ${project.projectName}: ${error.message}`
           );
         }
       }

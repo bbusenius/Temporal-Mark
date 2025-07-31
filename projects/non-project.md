@@ -1,7 +1,7 @@
 ---
 project: Non-Project
-departmentalGoal: [Administrative]
-strategicDirection: [OperationalEfficiency]
+departmentalGoal: []
+strategicDirection: []
 tags: [admin]
 status: Active
 startDate: 2025-07-01

@@ -28,6 +28,10 @@ class TimeDataParser {
       /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?(?:\s-\s(.+?))?$/;
     this.notesRegex = /^ {2}- Notes: (.+)$/;
     this.dateHeaderRegex = /^### (\d{4}-\d{2}-\d{2})$/;
+
+    // Regex to detect non-zero-padded time entries that need fixing
+    this.nonZeroPaddedRegex =
+      /^- \*\*(\d{1,2}:\d{2})-(\d{1,2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?(?:\s-\s(.+?))?$/;
   }
 
   /**
@@ -91,6 +95,49 @@ class TimeDataParser {
   }
 
   /**
+   * Check if a time string is properly zero-padded (HH:MM format)
+   * @param {string} timeStr - Time string to check
+   * @returns {boolean} True if properly zero-padded
+   */
+  isZeroPadded(timeStr) {
+    return /^\d{2}:\d{2}$/.test(timeStr);
+  }
+
+  /**
+   * Check if a line contains a non-zero-padded time entry that needs fixing
+   * @param {string} line - Line to check
+   * @returns {Object|null} Warning details if non-zero-padded found, null otherwise
+   */
+  checkForNonZeroPaddedTimes(line) {
+    // First check if it matches the non-zero-padded pattern but not the strict pattern
+    const nonPaddedMatch = line.match(this.nonZeroPaddedRegex);
+    const strictMatch = line.match(this.timeEntryRegex);
+
+    if (nonPaddedMatch && !strictMatch) {
+      const [, startTime, endTime] = nonPaddedMatch;
+      const issues = [];
+
+      if (!this.isZeroPadded(startTime)) {
+        issues.push(`start time "${startTime}" should be zero-padded`);
+      }
+      if (endTime !== '[ACTIVE]' && !this.isZeroPadded(endTime)) {
+        issues.push(`end time "${endTime}" should be zero-padded`);
+      }
+
+      return {
+        line: line.trim(),
+        issues,
+        suggestion: line.replace(
+          /\b(\d{1}):/g,
+          (match, hour) => `${hour.padStart(2, '0')}:`
+        ),
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Parse tags from a comma-separated tag string
    * Splits, trims, and normalizes tags to lowercase
    *
@@ -138,6 +185,15 @@ class TimeDataParser {
           );
         }
         continue;
+      }
+
+      // Check for non-zero-padded time entries and warn
+      const paddingWarning = this.checkForNonZeroPaddedTimes(line);
+      if (paddingWarning) {
+        console.warn(`Warning: Non-zero-padded time format at line ${i + 1}:`);
+        console.warn(`  Line: ${paddingWarning.line}`);
+        console.warn(`  Issues: ${paddingWarning.issues.join(', ')}`);
+        console.warn(`  Suggested fix: ${paddingWarning.suggestion}`);
       }
 
       // Check for time entry

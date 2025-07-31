@@ -111,6 +111,12 @@ class MarkdownDB {
 
   async insertProject(project) {
     return new Promise((resolve, reject) => {
+      // Check if database connection exists
+      if (!this.db) {
+        reject(new Error('Database connection not initialized'));
+        return;
+      }
+
       const query = `
         INSERT OR REPLACE INTO projects 
         (project_name, departmental_goals, strategic_directions, tags, status, start_date, summary, file_path)
@@ -130,7 +136,7 @@ class MarkdownDB {
 
       this.db.run(query, params, function (err) {
         if (err) {
-          reject(err);
+          reject(new Error(`Database error: ${err.message}`));
         } else {
           resolve({ id: this.lastID, ...project });
         }

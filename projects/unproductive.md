@@ -1,7 +1,7 @@
 ---
 project: Unproductive
-departmentalGoal: [None]
-strategicDirection: [None]
+departmentalGoal: []
+strategicDirection: []
 tags: [unproductive]
 status: Active
 startDate: 2025-07-01

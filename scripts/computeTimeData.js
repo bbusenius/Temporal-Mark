@@ -25,7 +25,7 @@ class TimeDataParser {
     // Updated regex to handle both completed entries and [ACTIVE] entries
     // Also handles entries without projects (optional [[project]])
     this.timeEntryRegex =
-      /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?(?:\s-\s(.+?))?$/;
+      /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?\s*(?:-\s(.+?))?\s*$/;
     this.notesRegex = /^ {2}- Notes: (.+)$/;
     this.dateHeaderRegex = /^### (\d{4}-\d{2}-\d{2})$/;
 

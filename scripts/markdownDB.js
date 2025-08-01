@@ -318,6 +318,50 @@ class MarkdownDB {
     });
   }
 
+  /**
+   * Clear all time entries from database
+   * @async
+   * @returns {Promise<void>}
+   */
+  async clearTimeEntries() {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM time_entries', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Clear all projects from database
+   * @async
+   * @returns {Promise<void>}
+   */
+  async clearProjects() {
+    return new Promise((resolve, reject) => {
+      this.db.run('DELETE FROM projects', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Clear all data from database
+   * @async
+   * @returns {Promise<void>}
+   */
+  async clearAllData() {
+    await this.clearTimeEntries();
+    await this.clearProjects();
+  }
+
   async close() {
     return new Promise((resolve, reject) => {
       if (this.db) {

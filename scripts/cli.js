@@ -1242,6 +1242,33 @@ program
     }
   });
 
+// Index command
+program
+  .command('index')
+  .description('Re-index all data from Markdown files into database')
+  .action(async () => {
+    try {
+      const dataIndexer = new DataIndexer();
+      await dataIndexer.initialize();
+
+      console.log(chalk.blue('Starting data re-indexing...'));
+
+      const results = await dataIndexer.indexAllData();
+
+      console.log(chalk.green('✓ Re-indexing completed successfully!'));
+      console.log(chalk.gray('Projects indexed:'), results.projects.indexed);
+      console.log(
+        chalk.gray('Time entries indexed:'),
+        results.timeEntries.indexed
+      );
+
+      await dataIndexer.close();
+    } catch (error) {
+      console.error(chalk.red('Failed to re-index data:'), error.message);
+      process.exit(1);
+    }
+  });
+
 // Error handling
 program.on('command:*', () => {
   console.error(chalk.red('Invalid command: %s'), program.args.join(' '));

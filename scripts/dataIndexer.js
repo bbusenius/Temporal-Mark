@@ -25,12 +25,14 @@ class DataIndexer {
    * @constructor
    * @param {string} [rootDir] - Root project directory (default: parent directory)
    */
-  constructor(rootDir = path.join(__dirname, '..')) {
+  constructor(rootDir = path.join(__dirname, '..'), dbPath = null) {
     this.rootDir = rootDir;
     this.projectsDir = path.join(rootDir, 'projects');
     this.timeLogsDir = path.join(rootDir, 'time-logs');
 
-    this.db = new MarkdownDB();
+    this.db = new MarkdownDB(
+      dbPath || path.join(rootDir, 'db/markdownDB.sqlite')
+    );
     this.timeParser = new TimeDataParser();
     this.projectParser = new ProjectParser();
   }
@@ -67,6 +69,11 @@ class DataIndexer {
    */
   async indexAllData() {
     console.log('Starting data indexing...');
+
+    // Clear existing data first
+    console.log('Clearing existing database data...');
+    await this.db.clearAllData();
+    console.log('✓ Database cleared');
 
     const results = {
       projects: { indexed: 0, errors: [] },

@@ -805,7 +805,7 @@ iabbrev webproj [[Website Redesign]]
 
    ```bash
    # This rebuilds the SQLite database from your markdown files
-   npm run tm -- daily 2025-07-29
+   npm run tm -- index
    ```
 
 2. **Validate wiki-links**:
@@ -1006,6 +1006,29 @@ npm run tm -- validate --entry '{"date":"2025-07-29","startTime":"09:00","endTim
 # Validate entries from a file
 npm run tm -- validate --file entries.json
 ```
+
+### Database Re-indexing
+
+Re-index the database to sync with your Markdown files:
+
+```bash
+# Re-index all data (clears and rebuilds database)
+npm run tm -- index
+```
+
+**When to use**:
+
+- After bulk manual edits to time logs or projects
+- When reports show outdated or missing information
+- After importing historical data
+- When you encounter database sync issues
+
+**What it does**:
+
+- Clears all existing database data
+- Re-indexes all project files and time logs
+- Shows progress and final counts
+- Handles errors gracefully
 
 ## Project Management
 
@@ -1236,7 +1259,21 @@ You should re-index the database when:
 
 ### How to Re-index
 
-#### Method 1: Automatic Re-indexing (Recommended)
+#### Method 1: Manual Re-indexing Command (Recommended)
+
+```bash
+# Use the dedicated index command for clean re-indexing
+npm run tm -- index
+```
+
+This command:
+
+- Clears all existing database data
+- Re-indexes all projects and time logs from Markdown files
+- Shows detailed progress and counts
+- Handles errors gracefully
+
+#### Method 2: Automatic Re-indexing (Alternative)
 
 ```bash
 # Delete database to force complete rebuild
@@ -1246,7 +1283,7 @@ rm db/markdownDB.sqlite
 npm run tm -- daily $(date +%Y-%m-%d)
 ```
 
-#### Method 2: Trigger via Any Database Command
+#### Method 3: Trigger via Any Database Command
 
 ```bash
 # Any of these commands will re-index if database is missing/corrupted
@@ -1308,7 +1345,7 @@ npm run tm -- daily $(date +%Y-%m-%d)
 
 ```bash
 # Re-index to pick up project file changes
-rm db/markdownDB.sqlite
+npm run tm -- index
 npm run tm -- project "Your Project Name"
 ```
 
@@ -1364,7 +1401,7 @@ npm run tm -- wiki --fix time-logs/time-log-2025-2026.md
 
 ```bash
 # This rebuilds the database from markdown files
-npm run tm -- daily 2025-07-29  # This triggers a re-index
+npm run tm -- index
 ```
 
 #### Tag Standardization Issues

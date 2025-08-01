@@ -448,6 +448,9 @@ npm run tm -- range 2025-07-01 2025-07-31 --group-by strategicDirection --format
 npm run tm -- weekly --group-by tag --sort hours --save
 npm run tm -- monthly 2025-07 --top-tasks 5 --format json
 
+# Database management
+npm run tm -- index                            # Re-index database from Markdown files
+
 # Input validation
 npm run tm -- validate --date "2025-07-29"     # Validate date format
 npm run tm -- validate --time "14:30"          # Validate time format

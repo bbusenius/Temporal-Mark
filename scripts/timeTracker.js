@@ -696,14 +696,20 @@ class TimeTracker {
     // Check if date section exists
     const dateHeader = `### ${date}`;
     if (!content.includes(dateHeader)) {
-      // Add date section
-      const monthYear = new Date(date).toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
-      const monthHeader = `## ${monthYear}`;
+      // Add date section - first check if we need a month header
+      const entryMonth = this.getMonthFromDate(date);
+      const entryYear = this.getYearFromDate(date);
+      const monthHeader = `## ${entryMonth} ${entryYear}`;
 
-      if (!content.includes(monthHeader)) {
+      // Check if we already have any entries for this month
+      // Look for either the exact month header or any date headers from the same month
+      const hasMonthEntries = this.hasEntriesForMonth(
+        content,
+        entryMonth,
+        entryYear
+      );
+
+      if (!hasMonthEntries) {
         content += `\n${monthHeader}\n\n`;
       }
 
@@ -828,6 +834,58 @@ class TimeTracker {
       return `${hours} hour${hours > 1 ? 's' : ''}`;
     }
     return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
+  }
+
+  /**
+   * Get month name from date string, avoiding timezone issues
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {string} Month name (e.g., "August")
+   */
+  getMonthFromDate(date) {
+    const [year, month, day] = date.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day); // month - 1 because JS months are 0-indexed
+    return dateObj.toLocaleDateString('en-US', { month: 'long' });
+  }
+
+  /**
+   * Get year from date string
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {string} Year (e.g., "2025")
+   */
+  getYearFromDate(date) {
+    const [year] = date.split('-').map(Number);
+    return year.toString();
+  }
+
+  /**
+   * Check if content already has entries for the given month and year
+   * @param {string} content - File content
+   * @param {string} month - Month name (e.g., "August")
+   * @param {string} year - Year (e.g., "2025")
+   * @returns {boolean} True if month already has entries
+   */
+  hasEntriesForMonth(content, month, year) {
+    // Check for exact month header match
+    const monthHeaderPattern = new RegExp(`^## ${month} ${year}$`, 'm');
+    if (monthHeaderPattern.test(content)) {
+      return true;
+    }
+
+    // Check for any date headers from the same month/year
+    const datePattern = new RegExp(`^### ${year}-\\d{2}-\\d{2}$`, 'gm');
+    const dateMatches = content.match(datePattern) || [];
+
+    for (const dateMatch of dateMatches) {
+      const datePart = dateMatch.replace('### ', '');
+      const entryMonth = this.getMonthFromDate(datePart);
+      const entryYear = this.getYearFromDate(datePart);
+
+      if (entryMonth === month && entryYear === year) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
 

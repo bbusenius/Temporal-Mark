@@ -1163,22 +1163,46 @@ program
   .description('Start tracking time for a new task')
   .option('-d, --date <date>', 'Date for the entry (YYYY-MM-DD)')
   .option('-s, --start <time>', 'Start time (HH:MM)')
-  .option('-t, --task <task>', 'Task description (required)')
+  .option(
+    '-t, --task <task>',
+    'Task description (required in non-interactive mode)'
+  )
   .option('-p, --project <project>', 'Project name')
   .option('--tags <tags>', 'Comma-separated tags')
   .option('-n, --notes <notes>', 'Additional notes')
+  .option('--no-interactive', 'Disable interactive mode (requires all options)')
   .action(async (options) => {
     try {
+      const timeTracker = new TimeTracker();
+
+      // Check if --no-interactive was explicitly set
+      const isNonInteractive =
+        !options.interactive && process.argv.includes('--no-interactive');
+
+      // Use interactive mode if not in non-interactive mode and no task is provided
+      const useInteractive = !isNonInteractive && !options.task;
+
+      if (useInteractive) {
+        // Interactive mode - show prompts for missing information
+        console.log(chalk.blue('\nStarting interactive time tracking...\n'));
+        const result = await timeTracker.processInteractiveStart();
+        console.log(chalk.green('✓'), result.message);
+        console.log(chalk.gray('Entry:'), result.entry);
+        console.log(chalk.gray('File:'), result.filePath);
+        return;
+      }
+
+      // Non-interactive mode - require task parameter
       if (!options.task) {
         console.error(
           chalk.red(
-            'Error: Task description is required. Use --task "Your task description"'
+            'Error: Task description is required in non-interactive mode. ' +
+              'Use --task or run without arguments for interactive mode.'
           )
         );
         process.exit(1);
       }
 
-      const timeTracker = new TimeTracker();
       const result = await timeTracker.startEntry({
         task: options.task,
         project: options.project,

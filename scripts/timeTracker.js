@@ -10,15 +10,18 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 const chalk = require('chalk');
+const inquirer = require('inquirer');
 const WikiLinkValidator = require('./wikiLinkValidator');
 const InputValidator = require('./inputValidator');
 const ProjectParser = require('./projectParser');
+const DataIndexer = require('./dataIndexer');
 
 class TimeTracker {
   constructor(options = {}) {
     this.validator = new InputValidator();
     this.projectParser = new ProjectParser();
     this.wikiValidator = new WikiLinkValidator();
+    this.dataIndexer = new DataIndexer();
     this.silent = options.silent || false; // For testing
   }
 
@@ -364,6 +367,283 @@ class TimeTracker {
     }
 
     return { task, project, tags, notes };
+  }
+
+  /**
+   * Interactive prompt to start a new time entry
+   * @returns {Promise<Object>} Result object with entry details
+   * @throws {Error} If there's an error during the interactive process
+   */
+  async processInteractiveStart() {
+    try {
+      await this.dataIndexer.initialize();
+      const projectChoices = await this._getProjectChoices();
+      const recentTags = await this._getRecentTags();
+      const answers = await this._promptForEntryDetails(
+        projectChoices,
+        recentTags
+      );
+      const options = this._prepareStartOptions(answers);
+      const result = await this.startEntry(options);
+      await this.dataIndexer.close();
+      return result;
+    } catch (error) {
+      if (!this.silent) {
+        console.error(chalk.red('Error in interactive start:'), error.message);
+      }
+      await this.dataIndexer.close();
+      throw error;
+    }
+  }
+
+  /**
+   * Get project choices for the interactive prompt
+   * @private
+   * @returns {Promise<Array<Object>>} Array of project choices
+   */
+  async _getProjectChoices() {
+    const projects = await this.dataIndexer.getAllProjectSummaries();
+    const projectChoices = projects.map((proj) => ({
+      name: `${proj.project_name} (${proj.totalHours}h)`,
+      value: proj.project_name,
+      description: proj.summary || 'No description',
+    }));
+
+    // Add option to enter a custom project
+    projectChoices.push({
+      name: 'Enter a new project...',
+      value: '_new_',
+    });
+
+    return projectChoices;
+  }
+
+  /**
+   * Prompt user for entry details
+   * @private
+   * @param {Array<Object>} projectChoices - Available project choices
+   * @param {Array<string>} recentTags - Recent tags for selection
+   * @returns {Promise<Object>} User's answers
+   */
+  async _promptForEntryDetails(projectChoices, recentTags) {
+    const prompts = [
+      this._createTaskPrompt(),
+      this._createProjectPrompt(projectChoices),
+      this._createCustomProjectPrompt(),
+      this._createTagsPrompt(recentTags),
+      this._createCustomTagsPrompt(),
+      this._createStartTimePrompt(),
+      this._createNotesPrompt(),
+    ];
+
+    return inquirer.prompt(prompts);
+  }
+
+  /**
+   * Create task prompt configuration
+   * @private
+   * @returns {Object} Task prompt configuration
+   */
+  _createTaskPrompt() {
+    return {
+      type: 'input',
+      name: 'task',
+      message: 'Task description:',
+      validate: (input) => {
+        if (!input || input.trim() === '') {
+          return 'Task description is required';
+        }
+        return true;
+      },
+    };
+  }
+
+  /**
+   * Create project selection prompt configuration
+   * @private
+   * @param {Array<Object>} projectChoices - Available project choices
+   * @returns {Object} Project prompt configuration
+   */
+  _createProjectPrompt(projectChoices) {
+    return {
+      type: 'list',
+      name: 'project',
+      message: 'Select a project:',
+      choices: projectChoices,
+      pageSize: 10,
+      loop: false,
+    };
+  }
+
+  /**
+   * Create custom project prompt configuration
+   * @private
+   * @returns {Object} Custom project prompt configuration
+   */
+  _createCustomProjectPrompt() {
+    return {
+      type: 'input',
+      name: 'customProject',
+      message: 'Enter project name (or leave empty to skip):',
+      when: (answers) => answers.project === '_new_',
+      validate: (input) => {
+        if (!input || input.trim() === '') {
+          return true; // Allow skipping
+        }
+        const projectValidation = this.validator.validateProjectName(input);
+        if (!projectValidation.isValid) {
+          return projectValidation.message;
+        }
+        return true;
+      },
+    };
+  }
+
+  /**
+   * Create tags prompt configuration
+   * @private
+   * @param {Array<string>} recentTags - Recent tags for selection
+   * @returns {Object} Tags prompt configuration
+   */
+  _createTagsPrompt(recentTags) {
+    return {
+      type: 'checkbox',
+      name: 'tags',
+      message: 'Tags (select existing or add custom):',
+      choices: [
+        ...recentTags.map((tag) => ({ name: tag, value: tag })),
+        new inquirer.Separator(),
+        { name: 'Add custom tags', value: '__custom__' },
+      ],
+      default: [],
+      validate: (input) => {
+        if (!Array.isArray(input)) {
+          return 'Please select at least one option or none';
+        }
+        return true;
+      },
+    };
+  }
+
+  /**
+   * Create start time prompt configuration
+   * @private
+   * @returns {Object} Start time prompt configuration
+   */
+  _createStartTimePrompt() {
+    return {
+      type: 'input',
+      name: 'start',
+      message: 'Start time (defaults to now or HH:MM):',
+      default: new Date().toTimeString().slice(0, 5),
+      validate: (input) => {
+        if (!input) return true; // Allow empty
+        const timeValidation = this.validator.validateTime(input, 'start time');
+        return timeValidation.isValid || timeValidation.message;
+      },
+    };
+  }
+
+  /**
+   * Create notes prompt configuration
+   * @private
+   * @returns {Object} Notes prompt configuration
+   */
+  _createNotesPrompt() {
+    return {
+      type: 'input',
+      name: 'notes',
+      message: 'Additional notes (optional):',
+    };
+  }
+
+  /**
+   * Prepare options for startEntry from user answers
+   * @private
+   * @param {Object} answers - User's answers from prompts
+   * @returns {Object} Options for startEntry
+   */
+  _prepareStartOptions(answers) {
+    // Combine selected tags and custom tags
+    const selectedTags = (answers.tags || []).filter(
+      (tag) => tag !== '__custom__'
+    );
+    const customTags = answers.customTags || [];
+    const allTags = [...selectedTags, ...customTags];
+
+    const options = {
+      task: answers.task,
+      project:
+        answers.project === '_new_' ? answers.customProject : answers.project,
+      tags: allTags.length > 0 ? allTags.join(',') : undefined,
+      notes: answers.notes,
+      start: answers.start || undefined,
+    };
+
+    // Remove empty values
+    Object.keys(options).forEach((key) => {
+      if (options[key] === undefined || options[key] === '') {
+        delete options[key];
+      }
+    });
+
+    return options;
+  }
+
+  /**
+   * Create custom tags prompt configuration
+   * @private
+   * @returns {Object} Custom tags prompt configuration
+   */
+  _createCustomTagsPrompt() {
+    return {
+      type: 'input',
+      name: 'customTags',
+      message:
+        'Custom tags (comma-separated) - leave empty if not adding custom tags:',
+      when: (answers) => answers.tags && answers.tags.includes('__custom__'),
+      default: '',
+      filter: (input) => {
+        if (!input || input.trim() === '') {
+          return [];
+        }
+        return input
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0);
+      },
+    };
+  }
+
+  /**
+   * Get recent tags for the interactive prompt
+   * @private
+   * @returns {Promise<Array<string>>} Array of recent tags
+   */
+  async _getRecentTags() {
+    const allProjects = await this.dataIndexer.getAllProjectSummaries();
+    const allTags = new Set();
+
+    // Get tags from projects
+    allProjects.forEach((project) => {
+      if (project.tags && project.tags !== 'null') {
+        try {
+          let tags;
+          if (typeof project.tags === 'string') {
+            tags = JSON.parse(project.tags);
+          } else {
+            tags = project.tags;
+          }
+          if (Array.isArray(tags)) {
+            tags.forEach((tag) => allTags.add(tag));
+          }
+        } catch (error) {
+          // Skip malformed tags
+        }
+      }
+    });
+
+    return Array.from(allTags).sort();
   }
 
   /**

@@ -27,7 +27,7 @@ npm install
 npm run tm -- --help
 
 # Run automated tests
-npm test                  # All tests (111 tests - all passing)
+npm test                  # All tests (124 tests - all passing)
 
 # Test the data layer (manual testing utility)
 node test/manual-test-data-layer.js
@@ -378,13 +378,17 @@ npm run tm -- archive --cleanup
 For complete command documentation and workflows, see the **[User Guide](docs/user-guide.md)**.
 
 ```bash
-# Interactive time entry
+# Interactive time entry (comprehensive prompts with suggestions)
 npm run tm -- add
 
 # Non-interactive time entry (for automation)
 npm run tm -- add --date 2025-07-18 --start 09:00 --end 11:30 --task "Design work" --project "Website Redesign 2025-2026"
 
-# Real-time time tracking
+# Interactive real-time time tracking (with project selection and tag suggestions)
+npm run tm -- start
+npm run tm -- finish --notes "Completed responsive layout"
+
+# Non-interactive real-time time tracking
 npm run tm -- start --task "Working on homepage design" --project "Website Redesign 2025-2026" --tags "design,ui"
 npm run tm -- finish --notes "Completed responsive layout"
 
@@ -645,7 +649,7 @@ Temporal Mark includes comprehensive automated testing and manual testing utilit
 Run the comprehensive test suite to validate all functionality:
 
 ```bash
-# Run all tests (123 tests - all passing)
+# Run all tests (124 tests - all passing)
 npm test
 
 # Run tests with coverage (if configured)
@@ -654,7 +658,7 @@ npm test -- --coverage
 
 ### Test Coverage
 
-The automated test suite (123 tests) covers all core functionality:
+The automated test suite (124 tests) covers all core functionality:
 
 - **Time Parsing**: Converting time strings, calculating durations, handling overnight entries
 - **Data Validation**: Date/time formats, fiscal years, task descriptions, field validation

@@ -395,7 +395,29 @@ This Vim setup provides a powerful, distraction-free environment for time tracki
 
 For active time tracking, Temporal Mark offers `start` and `finish` commands that let you begin tracking immediately and complete entries when done.
 
-#### Starting Time Tracking
+#### Interactive Time Tracking
+
+The `start` command supports both interactive and non-interactive modes, with the interactive mode providing comprehensive prompts and suggestions:
+
+```bash
+# Interactive mode - provides prompts with project selection and tag suggestions
+npm run tm -- start
+
+# Or use the --interactive flag explicitly
+npm run tm -- start --interactive
+```
+
+**Interactive Mode Features:**
+
+- **Task Description**: Formal prompt with validation requiring non-empty input
+- **Project Selection**: Database-driven list showing existing projects with hours logged and descriptions, plus option to create new projects
+- **Advanced Tag System**: Checkbox-style selection from existing tags, plus option to add custom tags
+- **Time Input**: Smart time entry with format help text "Start time (defaults to now or HH:MM):"
+- **Optional Notes**: Additional context for the time entry
+
+#### Non-Interactive Time Tracking
+
+For automation and scripting, use the non-interactive mode with command-line flags:
 
 ```bash
 # Start tracking a task
@@ -409,6 +431,9 @@ npm run tm -- start --task "Meeting with client" --start "14:00" --notes "Initia
 
 # Start with all options
 npm run tm -- start --task "Bug fixing" --project "Website" --tags "bug,frontend" --start "09:30" --notes "Fixing responsive design issues"
+
+# Force non-interactive mode (bypass interactive prompts)
+npm run tm -- start --no-interactive --task "Quick task" --project "Website"
 ```
 
 **Entry Format**: Active entries use the `[ACTIVE]` marker:
@@ -464,21 +489,34 @@ npm run tm -- finish --notes "Authentication system completed and tested"
 
 ### Adding Time Entries
 
-#### Interactive Mode (Recommended for beginners)
+#### Interactive Mode (Recommended)
 
 ```bash
 npm run tm -- add
 ```
 
-The system will prompt you for:
+The interactive mode provides comprehensive prompts with validation and intelligent suggestions:
 
-- **Date**: Uses today's date by default
-- **Start Time**: In HH:MM format (24-hour)
-- **End Time**: In HH:MM format (24-hour)
-- **Task Description**: What you worked on
-- **Project**: Choose from existing projects or create new one
-- **Tags**: Select existing tags or add custom ones
-- **Notes**: Optional additional details
+**Interactive Mode Features:**
+
+- **Date Input**: Defaults to current date with format validation (YYYY-MM-DD)
+- **Time Inputs**: Start and end time with format validation (HH:MM)
+- **Task Description**: Formal prompt with validation requiring non-empty input
+- **Project Selection**: Database-driven list showing existing projects, plus option to create new projects
+- **Advanced Tag Selection**:
+  - Checkbox-style interface showing all existing tags from the database
+  - Multi-select capability for choosing multiple existing tags
+  - Option to add custom tags via separate prompt
+  - Automatic tag normalization and validation
+- **Optional Notes**: Additional context for the time entry
+
+**Tag Selection Details:**
+The tag system provides a sophisticated interface:
+
+1. **Existing Tags**: Displayed as checkboxes, sourced from all project metadata
+2. **Custom Tags**: Select "Add custom tags" option to enter new tags
+3. **Tag Processing**: All tags are automatically normalized (lowercase, hyphens for spaces)
+4. **Validation**: Invalid tags are filtered out with helpful error messages
 
 #### Non-Interactive Mode (For automation/scripting)
 
@@ -521,12 +559,27 @@ Shows all entries tagged with a specific tag across all projects.
 
 ## Interactive vs Non-Interactive Mode
 
+Both `add` and `start` commands now provide consistent interactive experiences with comprehensive prompts and intelligent suggestions.
+
 ### When to Use Interactive Mode
 
 - **Learning the system**: Provides validation and suggestions
-- **Complex entries**: When you need to review project options
-- **Uncertain about tags**: System suggests existing tags
-- **Daily logging**: More conversational and user-friendly
+- **Complex entries**: When you need to review project options with hours and descriptions
+- **Tag management**: Advanced checkbox selection from existing tags plus custom tag input
+- **Daily logging**: Conversational interface with formal prompts and validation
+- **Project discovery**: Database-driven project selection showing activity levels
+- **Quality assurance**: Built-in validation prevents common errors
+
+### Interactive Mode Features (Both Commands)
+
+**Consistent User Experience:**
+
+- **Formal prompts**: Professional messaging with clear validation requirements
+- **Database integration**: Project lists with hours logged and descriptions
+- **Advanced tag system**: Checkbox selection from existing tags + custom input capability
+- **Smart defaults**: Current time for start times, current date for dates
+- **Input validation**: Real-time format checking and error prevention
+- **Project auto-creation**: Automatic project file creation for new projects
 
 ### When to Use Non-Interactive Mode
 
@@ -534,6 +587,7 @@ Shows all entries tagged with a specific tag across all projects.
 - **Batch processing**: Multiple entries from external sources
 - **Speed**: When you know exact values and want quick entry
 - **Integration**: With other tools and systems
+- **CI/CD pipelines**: Automated time logging from development workflows
 
 ### Batch Processing from JSON
 

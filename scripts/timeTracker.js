@@ -490,9 +490,11 @@ class TimeTracker {
         if (!input || input.trim() === '') {
           return true; // Allow skipping
         }
-        const projectValidation = this.validator.validateProjectName(input);
-        if (!projectValidation.isValid) {
-          return projectValidation.message;
+        if (!this.validator.patterns.projectName.test(input)) {
+          if (input.length > 100) {
+            return 'Project name must be between 1 and 100 characters';
+          }
+          return 'Project name contains invalid characters. Use letters, numbers, spaces, hyphens, underscores, and periods only';
         }
         return true;
       },
@@ -509,7 +511,7 @@ class TimeTracker {
     return {
       type: 'checkbox',
       name: 'tags',
-      message: 'Tags (select existing or add custom):',
+      message: 'Tags (use SPACE to select, ENTER to confirm):',
       choices: [
         ...recentTags.map((tag) => ({ name: tag, value: tag })),
         new inquirer.Separator(),

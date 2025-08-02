@@ -729,13 +729,64 @@ For Vim users, Temporal Mark files work great with:
 **Vim Configuration Example:**
 
 ```vim
-" Time entry abbreviations
-iabbrev tmark - **<C-R>=strftime("%H:%M")<CR>-**:
-iabbrev today ### <C-R>=strftime("%Y-%m-%d")<CR>
+" Follow Wiki-links
+function! TemporalMarkFollowLink()
+  let line = getline('.')
+  let link = matchstr(line, '\[\[\zs[^\]]*\ze\]\]')
 
-" Quick project references
-iabbrev tmproj [[Temporal Mark]]
-iabbrev webproj [[Website Redesign]]
+  if link != ''
+      " Try exact match first
+      let exact_file = 'projects/' . link . '.md'
+      if filereadable(exact_file)
+          execute 'edit ' . exact_file
+          return
+      endif
+
+      " Try lowercase with hyphens
+      let lower_file = 'projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
+      if filereadable(lower_file)
+          execute 'edit ' . lower_file
+          return
+      endif
+
+      " If not found, create with the exact link name
+      execute 'edit ' . exact_file
+  endif
+endfunction
+
+" Follow Wiki-links in split screen
+function! TemporalMarkFollowLinkSplit()
+    let line = getline('.')
+    let link = matchstr(line, '\[\[\zs[^\]]*\ze\]\]')
+
+    if link != ''
+        " Try exact match first
+        let exact_file = 'projects/' . link . '.md'
+        if filereadable(exact_file)
+            execute 'split ' . exact_file
+            return
+        endif
+
+        " Try lowercase with hyphens
+        let lower_file = 'projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
+        if filereadable(lower_file)
+            execute 'split ' . lower_file
+            return
+        endif
+
+        " If not found, create with the exact link name
+        execute 'split ' . exact_file
+    endif
+endfunction
+
+" Key mappings for following Wiki-links in Temporal Mark files
+autocmd BufRead,BufNewFile */time-logs/*.md,*/projects/*.md nnoremap <buffer> <CR> :call TemporalMarkFollowLink()<CR>
+autocmd BufRead,BufNewFile */time-logs/*.md,*/projects/*.md nnoremap <buffer> s<CR> :call TemporalMarkFollowLinkSplit()<CR>
+
+" Quick time entry in Temporal Mark files
+autocmd FileType markdown inoremap <buffer> t<CR> - ****: <left><left><left><left>
+iabbrev tmark - **<C-R>=strftime("%H:%M")<CR>-[ACTIVE]**:
+iabbrev dmark ### <C-R>=strftime("%Y-%m-%d")<CR>
 ```
 
 ### Manual Editing Guidelines

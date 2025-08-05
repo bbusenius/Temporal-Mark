@@ -233,11 +233,11 @@ class WikiLinkValidator {
 
       const currentDate = new Date().toISOString().split('T')[0];
       const defaultMetadata = {
-        projectName: sanitizedName,
+        project: sanitizedName,
         status: 'Active',
         startDate: currentDate,
-        departmentalGoals: ['General'],
-        strategicDirections: ['General'],
+        departmentalGoal: ['General'],
+        strategicDirection: ['General'],
         tags: [],
         summary: `Project created from wiki-link reference: [[${projectName}]]`,
         ...metadata,
@@ -246,7 +246,14 @@ class WikiLinkValidator {
       const yamlHeader = Object.entries(defaultMetadata)
         .map(([key, value]) => {
           if (Array.isArray(value)) {
+            if (value.length === 0) {
+              return `${key}: []`;
+            }
             return `${key}:\n${value.map((v) => `  - ${v}`).join('\n')}`;
+          }
+          // Always quote string values for consistent YAML formatting
+          if (typeof value === 'string') {
+            return `${key}: "${value}"`;
           }
           return `${key}: ${value}`;
         })

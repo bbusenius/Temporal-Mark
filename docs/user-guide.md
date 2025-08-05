@@ -317,17 +317,7 @@ For users who prefer a lightweight, keyboard-driven approach, Temporal Mark prov
 
 #### Vim Setup
 
-1. **Install the configuration**:
-
-   ```bash
-   # Source the Temporal Mark vim config in your ~/.vimrc
-   source ~/Documents/Business/UChicago/Code/Temporal-Mark/vimwiki-config.vim
-   ```
-
-2. **Or copy directly to ~/.vimrc**:
-   ```vim
-   " Add the contents of vimwiki-config.vim to your ~/.vimrc
-   ```
+Add the configuration shown below to your `~/.vimrc` file. This provides complete Vim integration with wiki-link navigation, syntax highlighting, and useful abbreviations.
 
 #### Key Features
 
@@ -337,12 +327,20 @@ For users who prefer a lightweight, keyboard-driven approach, Temporal Mark prov
 - **s+Enter**: Follow links in a split screen window
 - **Smart file matching**: Tries exact match first, then lowercase-with-hyphens
 - **Auto-creation**: Creates new project files if they don't exist
+- **Project safety**: Only works within Temporal Mark projects (looks for `package.json` + `projects/` directory)
+
+**Enhanced Syntax Highlighting**:
+
+- **Wiki-links**: `[[Project Name]]` appear in blue (same as regular links)
+- **Tags**: `[tag1, tag2]` appear in green for easy identification
+- **Consistent coloring**: Works whether tags follow wiki-links or not
 
 **Cross-Directory Links**:
 
-- Links from `time-logs/` automatically look in `projects/` directory
-- Handles inconsistent naming (spaces vs hyphens, capitalization)
-- Works seamlessly with existing file structure
+- **Smart root detection**: Automatically finds Temporal Mark project root from any subdirectory
+- **Works from anywhere**: Open time-logs from any directory and links still work
+- **Handles inconsistent naming**: Spaces vs hyphens, capitalization variations
+- **Graceful fallback**: Shows helpful message when not in a Temporal Mark project
 
 #### Vim Workflow
 
@@ -726,49 +724,78 @@ For Vim users, Temporal Mark files work great with:
 3. **Abbreviations**: Set up abbreviations for common project names
 4. **Templates**: Use snippets for time entry formatting
 
-**Vim Configuration Example:**
+**Vim Configuration (add to ~/.vimrc):**
 
 ```vim
-" Follow Wiki-links
-function! TemporalMarkFollowLink()
-  let line = getline('.')
-  let link = matchstr(line, '\[\[\zs[^\]]*\ze\]\]')
+" Function to find Temporal Mark root directory
+function! FindTemporalMarkRoot()
+    let current_dir = expand('%:p:h')
+    let search_dir = current_dir
 
-  if link != ''
-      " Try exact match first
-      let exact_file = 'projects/' . link . '.md'
-      if filereadable(exact_file)
-          execute 'edit ' . exact_file
-          return
-      endif
+    " Search upward for package.json or other Temporal Mark indicators
+    while search_dir != '/'
+        if filereadable(search_dir . '/package.json') && isdirectory(search_dir . '/projects')
+            return search_dir
+        endif
+        let search_dir = fnamemodify(search_dir, ':h')
+    endwhile
 
-      " Try lowercase with hyphens
-      let lower_file = 'projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
-      if filereadable(lower_file)
-          execute 'edit ' . lower_file
-          return
-      endif
-
-      " If not found, create with the exact link name
-      execute 'edit ' . exact_file
-  endif
+    " Return empty string if not in Temporal Mark project
+    return ''
 endfunction
 
-" Follow Wiki-links in split screen
-function! TemporalMarkFollowLinkSplit()
+" Simple wiki link following for Temporal Mark (no vimwiki dependency)
+function! TemporalMarkFollowLink()
+    let root_dir = FindTemporalMarkRoot()
+    if root_dir == ''
+        echo "Not in a Temporal Mark project"
+        return
+    endif
+
     let line = getline('.')
     let link = matchstr(line, '\[\[\zs[^\]]*\ze\]\]')
 
     if link != ''
         " Try exact match first
-        let exact_file = 'projects/' . link . '.md'
+        let exact_file = root_dir . '/projects/' . link . '.md'
+        if filereadable(exact_file)
+            execute 'edit ' . exact_file
+            return
+        endif
+
+        " Try lowercase with hyphens
+        let lower_file = root_dir . '/projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
+        if filereadable(lower_file)
+            execute 'edit ' . lower_file
+            return
+        endif
+
+        " If not found, create with the exact link name
+        execute 'edit ' . exact_file
+    endif
+endfunction
+
+" Function to follow links in split screen
+function! TemporalMarkFollowLinkSplit()
+    let root_dir = FindTemporalMarkRoot()
+    if root_dir == ''
+        echo "Not in a Temporal Mark project"
+        return
+    endif
+
+    let line = getline('.')
+    let link = matchstr(line, '\[\[\zs[^\]]*\ze\]\]')
+
+    if link != ''
+        " Try exact match first
+        let exact_file = root_dir . '/projects/' . link . '.md'
         if filereadable(exact_file)
             execute 'split ' . exact_file
             return
         endif
 
         " Try lowercase with hyphens
-        let lower_file = 'projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
+        let lower_file = root_dir . '/projects/' . substitute(tolower(link), ' ', '-', 'g') . '.md'
         if filereadable(lower_file)
             execute 'split ' . lower_file
             return
@@ -779,11 +806,17 @@ function! TemporalMarkFollowLinkSplit()
     endif
 endfunction
 
-" Key mappings for following Wiki-links in Temporal Mark files
+" Syntax coloring for Wiki-links and tags
+augroup markdown_syntax
+  autocmd!
+  autocmd FileType markdown syntax match markdownWikiLink /\[\[.\{-}\]\]/ | highlight link markdownWikiLink markdownLinkText
+  autocmd FileType markdown syntax match markdownTag /\[\zs[^][]\+\ze\]/ | highlight link markdownTag markdownTag
+  autocmd FileType markdown highlight markdownTag ctermfg=LightGreen
+augroup END
+
+" Key mappings for Temporal Mark files
 autocmd BufRead,BufNewFile */time-logs/*.md,*/projects/*.md nnoremap <buffer> <CR> :call TemporalMarkFollowLink()<CR>
 autocmd BufRead,BufNewFile */time-logs/*.md,*/projects/*.md nnoremap <buffer> s<CR> :call TemporalMarkFollowLinkSplit()<CR>
-
-" Quick time entry in Temporal Mark files
 autocmd FileType markdown inoremap <buffer> t<CR> - ****: <left><left><left><left>
 iabbrev tmark - **<C-R>=strftime("%H:%M")<CR>-[ACTIVE]**:
 iabbrev dmark ### <C-R>=strftime("%Y-%m-%d")<CR>

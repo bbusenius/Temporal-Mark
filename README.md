@@ -1,6 +1,11 @@
 # Temporal Mark
 
-A Markdown-based time tracking system for logging and analyzing work hours across projects, designed for individual use but universally accessible.
+A sophisticated time tracking ecosystem that bridges human-readable Markdown files with powerful automation. Temporal Mark delivers the immediacy of manual editing, the efficiency of a comprehensive CLI, and seamless AI integration through MCP, making time tracking as natural as taking notes, yet as powerful as enterprise analytics.
+
+![Temporal Mark Workflow](docs/images/workflow-demo.png)
+_Complete workflow demonstration: Interactive CLI entry → Seamless AI integration via Claude Code → Human-readable Markdown storage → Instant analytics_
+
+If you don't want to use AI or the CLI, you can still use Temporal Mark by manually creating and editing Markdown files.
 
 ## Overview
 

@@ -1249,7 +1249,7 @@ program
   .action(async () => {
     try {
       const dataIndexer = new DataIndexer();
-      await dataIndexer.initialize();
+      await dataIndexer.initialize({ skipAutoReindex: true });
 
       console.log(chalk.blue('Starting data re-indexing...'));
 

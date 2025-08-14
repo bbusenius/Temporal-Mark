@@ -40,23 +40,104 @@ class DataIndexer {
   /**
    * Initialize the database connection and prepare for indexing operations
    * @async
+   * @param {Object} [options] - Initialization options
+   * @param {boolean} [options.skipAutoReindex=false] - Skip automatic reindexing
    * @returns {Promise<void>}
    */
-  async initialize() {
+  async initialize(options = {}) {
+    const { skipAutoReindex = false } = options;
     await this.db.init();
 
-    // Check if database is empty and auto-index if needed
-    try {
-      const timeEntryCount = await this.db.getTimeEntryCount();
-      if (timeEntryCount === 0) {
-        console.log('Database is empty. Auto-indexing from Markdown files...');
+    // Check if database is empty or files are newer than database (unless skipped)
+    if (!skipAutoReindex) {
+      try {
+        const timeEntryCount = await this.db.getTimeEntryCount();
+        if (timeEntryCount === 0) {
+          console.log(
+            'Database is empty. Auto-indexing from Markdown files...'
+          );
+          await this.indexAllData();
+        } else {
+          // Check if files are newer than database
+          const dbTimestamp = await this.getLastIndexTime();
+          const filesTimestamp = await this.getNewestFileTime();
+
+          if (!dbTimestamp || filesTimestamp > dbTimestamp) {
+            console.log(
+              '📁 Files changed since last index. Auto-reindexing...'
+            );
+            await this.indexAllData();
+          }
+        }
+      } catch (error) {
+        // If error checking count, database might be corrupted - try to index anyway
+        console.log('Database check failed. Attempting to index data...');
         await this.indexAllData();
       }
-    } catch (error) {
-      // If error checking count, database might be corrupted - try to index anyway
-      console.log('Database check failed. Attempting to index data...');
-      await this.indexAllData();
     }
+  }
+
+  /**
+   * Get the timestamp of the last database indexing operation
+   * @async
+   * @returns {Promise<Date|null>} Last index timestamp or null if no data
+   */
+  async getLastIndexTime() {
+    try {
+      // Use the database file modification time as proxy for last index
+      const dbStat = fs.statSync(this.db.dbPath);
+      return dbStat.mtime;
+    } catch (error) {
+      // Database file doesn't exist or can't be read
+      return null;
+    }
+  }
+
+  /**
+   * Get the newest modification time among all markdown files
+   * @async
+   * @returns {Promise<Date>} Newest file modification time
+   */
+  async getNewestFileTime() {
+    let newestTime = new Date(0); // Epoch start
+
+    try {
+      // Check all project files
+      if (fs.existsSync(this.projectsDir)) {
+        const projectFiles = fs
+          .readdirSync(this.projectsDir)
+          .filter((file) => file.endsWith('.md'));
+
+        for (const file of projectFiles) {
+          const filePath = path.join(this.projectsDir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.mtime > newestTime) {
+            newestTime = stat.mtime;
+          }
+        }
+      }
+
+      // Check all time log files
+      if (fs.existsSync(this.timeLogsDir)) {
+        const timeLogFiles = fs
+          .readdirSync(this.timeLogsDir)
+          .filter((file) => file.endsWith('.md'));
+
+        for (const file of timeLogFiles) {
+          const filePath = path.join(this.timeLogsDir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.mtime > newestTime) {
+            newestTime = stat.mtime;
+          }
+        }
+      }
+    } catch (error) {
+      // If we can't read directories, return current time to force reindex
+      console.warn('Warning: Could not check file timestamps, forcing reindex');
+      return new Date();
+    }
+
+    return newestTime;
   }
 
   /**

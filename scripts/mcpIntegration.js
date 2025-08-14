@@ -9,6 +9,7 @@ const DataIndexer = require('./dataIndexer');
 const AddEntry = require('./addEntry');
 const TimeTracker = require('./timeTracker');
 const InputValidator = require('./inputValidator');
+const WikiLinkValidator = require('./wikiLinkValidator');
 const errorLogger = require('./errorLogger');
 
 /**
@@ -33,6 +34,7 @@ class MCPIntegration {
     this.dataIndexer = new DataIndexer();
     this.timeTracker = new TimeTracker({ silent: true });
     this.validator = new InputValidator();
+    this.wikiValidator = new WikiLinkValidator();
     this.errorLogger = errorLogger;
     this.isInitialized = false;
   }
@@ -55,6 +57,30 @@ class MCPIntegration {
     } catch (error) {
       this.errorLogger.logError('Failed to initialize MCP integration', error);
       throw error;
+    }
+  }
+
+  /**
+   * Check for file changes and reindex if needed for long-running MCP server
+   * @async
+   * @returns {Promise<boolean>} True if reindexing occurred
+   */
+  async ensureFreshData() {
+    try {
+      const dbTimestamp = await this.dataIndexer.getLastIndexTime();
+      const filesTimestamp = await this.dataIndexer.getNewestFileTime();
+
+      if (!dbTimestamp || filesTimestamp > dbTimestamp) {
+        console.error('📁 Files changed, re-indexing for MCP operation...');
+        await this.dataIndexer.indexAllData();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking file changes:', error.message);
+      // If we can't check, force reindex to be safe
+      await this.dataIndexer.indexAllData();
+      return true;
     }
   }
 
@@ -112,6 +138,69 @@ class MCPIntegration {
               },
             },
             required: ['date', 'startTime', 'endTime', 'task', 'project'],
+          },
+        },
+        {
+          name: 'temporal_mark_start_tracking',
+          description: 'Start tracking time for a new task',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              task: {
+                type: 'string',
+                minLength: 5,
+                maxLength: 500,
+                description: 'Task description (required)',
+              },
+              project: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 100,
+                description: 'Project name',
+              },
+              tags: {
+                type: 'string',
+                description: 'Comma-separated tags',
+              },
+              notes: {
+                type: 'string',
+                maxLength: 1000,
+                description: 'Additional notes',
+              },
+              date: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+                description: 'Date in YYYY-MM-DD format (defaults to today)',
+              },
+              start: {
+                type: 'string',
+                pattern: '^\\d{2}:\\d{2}$',
+                description:
+                  'Start time in HH:MM format (defaults to current time)',
+              },
+            },
+            required: ['task'],
+          },
+        },
+        {
+          name: 'temporal_mark_finish_tracking',
+          description: 'Finish the current active time entry',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              end: {
+                type: 'string',
+                pattern: '^\\d{2}:\\d{2}$',
+                description:
+                  'End time in HH:MM format (defaults to current time)',
+              },
+              notes: {
+                type: 'string',
+                maxLength: 1000,
+                description: 'Additional notes to append',
+              },
+            },
+            required: [],
           },
         },
         {
@@ -333,6 +422,55 @@ class MCPIntegration {
             required: [],
           },
         },
+        {
+          name: 'temporal_mark_create_project',
+          description: 'Create a new project with metadata',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectName: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 100,
+                description: 'Name of the project to create',
+              },
+              departmentalGoal: {
+                type: 'array',
+                items: { type: 'string' },
+                default: ['General'],
+                description: 'Array of departmental goals',
+              },
+              strategicDirection: {
+                type: 'array',
+                items: { type: 'string' },
+                default: ['General'],
+                description: 'Array of strategic directions',
+              },
+              status: {
+                type: 'string',
+                enum: ['Active', 'Completed', 'On Hold', 'Cancelled'],
+                default: 'Active',
+                description: 'Project status',
+              },
+              startDate: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+                description: 'Project start date (defaults to today)',
+              },
+              summary: {
+                type: 'string',
+                maxLength: 500,
+                description: 'Project summary/description',
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Array of project tags',
+              },
+            },
+            required: ['projectName'],
+          },
+        },
       ],
       resources: [
         {
@@ -396,6 +534,9 @@ class MCPIntegration {
         case 'temporal_mark_generate_monthly_report':
           return this.generateMonthlyReport(args);
 
+        case 'temporal_mark_create_project':
+          return this.createProject(args);
+
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
@@ -439,20 +580,54 @@ class MCPIntegration {
     }
 
     try {
-      const addEntry = new AddEntry();
+      // Ensure we have fresh data before proceeding
+      await this.ensureFreshData();
 
-      // Format arguments for AddEntry class
-      const entryOptions = {
+      // Create AddEntry instance with fresh database state
+      const addEntry = new AddEntry();
+      await addEntry.initialize();
+
+      // Create entry object
+      const entry = {
         date,
-        start: startTime,
-        end: endTime,
+        startTime,
+        endTime,
         task,
         project,
-        tags: Array.isArray(tags) ? tags.join(',') : tags,
-        notes,
+        tags: Array.isArray(tags) ? tags : this.parseTagsField(tags),
+        notes: notes || null,
       };
 
-      const result = await addEntry.addEntry(entryOptions);
+      // Validate the entry with fresh data
+      const existingEntries =
+        await addEntry.dataIndexer.db.getTimeEntriesForDate(date);
+      const validationResults = await addEntry.inputValidator.validateTimeEntry(
+        entry,
+        existingEntries
+      );
+
+      // For MCP, we accept warnings automatically but still fail on errors
+      if (!validationResults.isValid) {
+        return {
+          success: false,
+          error: `Validation failed: ${validationResults.errors.join(', ')}`,
+          validation: validationResults,
+          mcpCompatible: true,
+        };
+      }
+
+      // Standardize tags and process entry
+      entry.tags = addEntry.tagStandardizer.normalizeTags(entry.tags || []);
+      const durationHours = addEntry.timeParser.calculateDuration(
+        startTime,
+        endTime
+      );
+
+      // Save the entry directly
+      const result = await addEntry.saveEntry({
+        ...entry,
+        durationHours,
+      });
 
       return {
         success: true,
@@ -463,9 +638,7 @@ class MCPIntegration {
           endTime,
           task,
           project,
-          tags: Array.isArray(tags)
-            ? tags
-            : tags.split(',').map((t) => t.trim()),
+          tags: entry.tags,
           notes,
           duration: this.calculateDuration(startTime, endTime),
         },
@@ -476,7 +649,7 @@ class MCPIntegration {
       return {
         success: false,
         error: error.message,
-        validation,
+        validation: validation || null,
         mcpCompatible: true,
       };
     }
@@ -498,6 +671,9 @@ class MCPIntegration {
     const { task, project, tags, notes, date, start } = args;
 
     try {
+      // Ensure we have fresh data before proceeding
+      await this.ensureFreshData();
+
       // Validate required field
       if (!task || typeof task !== 'string' || task.trim() === '') {
         return {
@@ -564,6 +740,9 @@ class MCPIntegration {
     const { end, notes } = args;
 
     try {
+      // Ensure we have fresh data before proceeding
+      await this.ensureFreshData();
+
       // Finish tracking using TimeTracker
       const result = await this.timeTracker.finishEntry({
         end,
@@ -630,6 +809,7 @@ class MCPIntegration {
     const { date } = args;
 
     try {
+      await this.ensureFreshData();
       const summary = await this.dataIndexer.getDailySummary(date);
 
       return {
@@ -644,7 +824,7 @@ class MCPIntegration {
             endTime: entry.end_time,
             task: entry.task,
             project: entry.project,
-            tags: entry.tags ? entry.tags.split(',') : [],
+            tags: this.parseTagsField(entry.tags),
             duration: entry.duration_hours,
           })),
           gaps: summary.gaps,
@@ -670,6 +850,7 @@ class MCPIntegration {
     const { projectName, limit = 10 } = args;
 
     try {
+      await this.ensureFreshData();
       const summary = await this.dataIndexer.getProjectSummary(projectName);
 
       if (!summary.project) {
@@ -687,13 +868,15 @@ class MCPIntegration {
             name: summary.project.project_name,
             status: summary.project.status,
             startDate: summary.project.start_date,
-            departmentalGoals: summary.project.departmental_goals
-              ? JSON.parse(summary.project.departmental_goals)
-              : [],
-            strategicDirections: summary.project.strategic_directions
-              ? JSON.parse(summary.project.strategic_directions)
-              : [],
-            tags: summary.project.tags ? JSON.parse(summary.project.tags) : [],
+            departmentalGoals: this.parseJsonField(
+              summary.project.departmental_goals,
+              'departmentalGoals'
+            ),
+            strategicDirections: this.parseJsonField(
+              summary.project.strategic_directions,
+              'strategicDirections'
+            ),
+            tags: this.parseJsonField(summary.project.tags, 'tags'),
             summary: summary.project.summary,
           },
           totalHours: summary.totalHours,
@@ -704,7 +887,7 @@ class MCPIntegration {
             endTime: entry.end_time,
             task: entry.task,
             duration: entry.duration_hours,
-            tags: entry.tags ? entry.tags.split(',') : [],
+            tags: this.parseTagsField(entry.tags),
           })),
         },
         mcpCompatible: true,
@@ -728,6 +911,7 @@ class MCPIntegration {
     const { tag, limit = 10 } = args;
 
     try {
+      await this.ensureFreshData();
       const summary = await this.dataIndexer.getTagSummary(tag);
 
       return {
@@ -813,6 +997,9 @@ class MCPIntegration {
     const { date, startTime, endTime, task, project, tags = [] } = args;
 
     try {
+      // Ensure we have fresh data before validation
+      await this.ensureFreshData();
+
       // Validate date
       const dateValidation = this.validator.validateDate(date);
 
@@ -898,6 +1085,7 @@ class MCPIntegration {
    */
   async getProjectsResource() {
     try {
+      await this.ensureFreshData();
       const projects = await this.dataIndexer.getAllProjectSummaries();
 
       return {
@@ -911,12 +1099,14 @@ class MCPIntegration {
               startDate: p.start_date,
               totalHours: p.totalHours,
               entryCount: p.entryCount,
-              departmentalGoals: p.departmental_goals
-                ? JSON.parse(p.departmental_goals)
-                : [],
-              strategicDirections: p.strategic_directions
-                ? JSON.parse(p.strategic_directions)
-                : [],
+              departmentalGoals: this.parseJsonField(
+                p.departmental_goals,
+                'departmentalGoals'
+              ),
+              strategicDirections: this.parseJsonField(
+                p.strategic_directions,
+                'strategicDirections'
+              ),
             })),
             totalProjects: projects.length,
             lastUpdated: new Date().toISOString(),
@@ -1195,6 +1385,194 @@ class MCPIntegration {
       start: startDate.toISOString().split('T')[0],
       end: endDate.toISOString().split('T')[0],
     };
+  }
+
+  /**
+   * Safely parse JSON field with error handling
+   * @private
+   * @param {string} jsonString - JSON string to parse
+   * @param {string} fieldName - Field name for error reporting
+   * @returns {Array} Parsed array or empty array on error
+   */
+  parseJsonField(jsonString, fieldName) {
+    if (
+      !jsonString ||
+      typeof jsonString !== 'string' ||
+      jsonString.trim() === ''
+    ) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(jsonString);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error(
+        `Error parsing JSON field '${fieldName}': ${error.message}`
+      );
+      console.error(`Raw value: "${jsonString}" (type: ${typeof jsonString})`);
+      return [];
+    }
+  }
+
+  /**
+   * Safely parse tags field (comma-separated string) with error handling
+   * @private
+   * @param {string} tagsString - Comma-separated tags string
+   * @returns {Array} Array of tag strings or empty array on error
+   */
+  parseTagsField(tagsString) {
+    if (
+      !tagsString ||
+      typeof tagsString !== 'string' ||
+      tagsString.trim() === ''
+    ) {
+      return [];
+    }
+
+    try {
+      return tagsString
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag.length > 0);
+    } catch (error) {
+      console.error(`Error parsing tags field: ${error.message}`);
+      console.error(`Raw value: "${tagsString}" (type: ${typeof tagsString})`);
+      return [];
+    }
+  }
+
+  /**
+   * Create a new project via MCP interface
+   * @async
+   * @param {Object} args - Project creation arguments
+   * @param {string} args.projectName - Name of the project to create (required)
+   * @param {Array<string>} [args.departmentalGoal] - Array of departmental goals
+   * @param {Array<string>} [args.strategicDirection] - Array of strategic directions
+   * @param {string} [args.status] - Project status
+   * @param {string} [args.startDate] - Project start date (YYYY-MM-DD format)
+   * @param {string} [args.summary] - Project summary/description
+   * @param {Array<string>} [args.tags] - Array of project tags
+   * @returns {Promise<Object>} Project creation result
+   */
+  async createProject(args) {
+    const {
+      projectName,
+      departmentalGoal = ['General'],
+      strategicDirection = ['General'],
+      status = 'Active',
+      startDate,
+      summary,
+      tags = [],
+    } = args;
+
+    try {
+      // Ensure we have fresh data before proceeding
+      await this.ensureFreshData();
+
+      // Validate required field
+      if (
+        !projectName ||
+        typeof projectName !== 'string' ||
+        projectName.trim() === ''
+      ) {
+        return {
+          success: false,
+          error: 'Project name is required and must be a non-empty string',
+          validation: {
+            isValid: false,
+            errors: ['Project name is required'],
+            warnings: [],
+          },
+          mcpCompatible: true,
+        };
+      }
+
+      // Prepare metadata with defaults
+      const currentDate = new Date().toISOString().split('T')[0];
+      const metadata = {
+        departmentalGoal: Array.isArray(departmentalGoal)
+          ? departmentalGoal
+          : ['General'],
+        strategicDirection: Array.isArray(strategicDirection)
+          ? strategicDirection
+          : ['General'],
+        status: ['Active', 'Completed', 'On Hold', 'Cancelled'].includes(status)
+          ? status
+          : 'Active',
+        startDate: startDate || currentDate,
+        tags: Array.isArray(tags) ? tags : [],
+        summary: summary || `Project created via MCP: ${projectName}`,
+      };
+
+      // Validate startDate format if provided
+      if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        return {
+          success: false,
+          error: 'Start date must be in YYYY-MM-DD format',
+          validation: {
+            isValid: false,
+            errors: ['Invalid startDate format'],
+            warnings: [],
+          },
+          mcpCompatible: true,
+        };
+      }
+
+      // Create the project using WikiLinkValidator
+      const result = await this.wikiValidator.createProjectForWikiLink(
+        projectName,
+        metadata
+      );
+
+      if (this.options.enableLogging) {
+        console.log(`MCP: Created project "${projectName}"`);
+      }
+
+      return {
+        success: true,
+        message: `Project "${projectName}" created successfully`,
+        project: {
+          name: projectName,
+          ...metadata,
+          filePath: result.filePath,
+        },
+        timestamp: new Date().toISOString(),
+        mcp_context: {
+          tool: 'temporal_mark_create_project',
+          action: 'create_project',
+        },
+        mcpCompatible: true,
+      };
+    } catch (error) {
+      this.errorLogger.logError('MCP create project error', error);
+
+      // Handle specific error types
+      let errorMessage = error.message;
+      let errorType = 'unknown';
+
+      if (error.message.includes('already exists')) {
+        errorType = 'conflict';
+        errorMessage = `Project "${projectName}" already exists`;
+      } else if (
+        error.message.includes('Invalid') ||
+        error.message.includes('must be')
+      ) {
+        errorType = 'validation';
+      }
+
+      return {
+        success: false,
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        mcp_context: {
+          tool: 'temporal_mark_create_project',
+          action: 'create_project',
+          error_type: errorType,
+        },
+        mcpCompatible: true,
+      };
+    }
   }
 
   /**

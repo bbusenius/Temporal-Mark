@@ -44,7 +44,7 @@ class TimeTracker {
       }
 
       // Determine date and validate
-      const date = options.date || new Date().toISOString().split('T')[0];
+      const date = options.date || this.getCurrentLocalDate();
       const dateValidation = this.validator.validateDate(date);
       if (!dateValidation.isValid) {
         throw new Error(`Invalid date: ${dateValidation.message}`);
@@ -737,7 +737,7 @@ class TimeTracker {
           break;
         }
 
-        // Skip empty lines and notes
+        // Skip empty lines and notes when looking for entry lines
         if (!line.startsWith('- **')) {
           continue;
         }
@@ -754,7 +754,38 @@ class TimeTracker {
           break;
         }
 
+        // Update insertIndex to be after this entry and any associated notes/content
         insertIndex = i + 1;
+
+        // Skip over any notes or content lines that belong to this entry
+        while (insertIndex < lines.length) {
+          const currentLine = lines[insertIndex];
+
+          // Stop if we hit another entry or header
+          if (
+            currentLine.startsWith('- **') ||
+            currentLine.startsWith('###') ||
+            currentLine.startsWith('##')
+          ) {
+            break;
+          }
+
+          // Skip notes and non-empty content lines
+          if (
+            currentLine.trim().startsWith('- Notes:') ||
+            (currentLine.trim() !== '' && currentLine.startsWith('  '))
+          ) {
+            insertIndex++;
+            continue;
+          }
+
+          // Stop at empty lines (don't include them in the skip)
+          if (currentLine.trim() === '') {
+            break;
+          }
+
+          insertIndex++;
+        }
       }
 
       lines.splice(insertIndex, 0, entry.trim());
@@ -888,6 +919,18 @@ class TimeTracker {
     }
 
     return false;
+  }
+
+  /**
+   * Get current date in local timezone (YYYY-MM-DD format)
+   * @returns {string} Current local date
+   */
+  getCurrentLocalDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // getMonth() is 0-based
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
 

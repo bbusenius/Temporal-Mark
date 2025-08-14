@@ -1093,19 +1093,43 @@ npm run tm -- validate --file entries.json
 
 ### Database Re-indexing
 
-Re-index the database to sync with your Markdown files:
+#### Automatic Re-indexing (Default Behavior)
+
+Temporal Mark automatically detects when markdown files have been modified and reindexes the database as needed:
+
+```
+📁 Files changed since last index. Auto-reindexing...
+```
+
+**How it works**:
+
+- **File timestamp checking**: Compares modification time of all markdown files against database timestamp
+- **Automatic detection**: Triggers on CLI commands, MCP operations, and API requests
+- **Performance**: Fast reindexing only when files actually changed
+- **Cross-platform**: Uses Node.js built-in file system APIs (Windows, macOS, Linux)
+
+**Auto-reindexing triggers**:
+
+- Manual edits in Obsidian, Vim, or any text editor
+- Git operations (checkout, merge, pull, etc.)
+- File recovery or restoration from backups
+- Any time markdown files are newer than the database
+
+#### Manual Re-indexing (When Needed)
+
+Force a re-index manually if you encounter issues:
 
 ```bash
 # Re-index all data (clears and rebuilds database)
 npm run tm -- index
 ```
 
-**When to use**:
+**When to use manual reindexing**:
 
-- After bulk manual edits to time logs or projects
-- When reports show outdated or missing information
-- After importing historical data
-- When you encounter database sync issues
+- Troubleshooting database corruption
+- After major file system changes
+- When auto-reindexing fails or produces errors
+- For verification after bulk data imports
 
 **What it does**:
 
@@ -1113,6 +1137,13 @@ npm run tm -- index
 - Re-indexes all project files and time logs
 - Shows progress and final counts
 - Handles errors gracefully
+
+#### Benefits of Auto-Reindexing
+
+- **No manual intervention**: Never need to remember to run index manually
+- **Always accurate**: Validation and reporting work correctly regardless of how files were edited
+- **Seamless integration**: Works with Obsidian, Vim, git, and any file editing workflow
+- **Reliable MCP/API**: AI assistants and web integrations always have current data
 
 ## Project Management
 
@@ -1848,49 +1879,25 @@ The system provides comprehensive MCP integration:
 - **Structured Error Handling** compatible with MCP response formats
 - **Resource-Based Data Access** patterns for AI discovery
 
-### Available MCP Tools
+### MCP Capabilities
 
-The MCP integration layer provides 8 tools for AI systems:
+- **12 MCP tools** for time entry management, project creation, data analysis, and reporting
+- **2 MCP resources** for AI data discovery (projects and current time logs)
+- **JSON schema validation** for all tool inputs and outputs
 
-1. **temporal_mark_add_entry** - Create new time entries with validation
-2. **temporal_mark_start_tracking** - Start tracking time for a new task
-3. **temporal_mark_finish_tracking** - Finish the current active time entry
-4. **temporal_mark_get_daily_summary** - Retrieve daily summaries and gap analysis
-5. **temporal_mark_get_project_summary** - Analyze project data and recent entries
-6. **temporal_mark_get_tag_summary** - Get tag-based insights and statistics
-7. **temporal_mark_generate_report** - Create fiscal year reports with grouping
-8. **temporal_mark_validate_entry** - Validate entries without saving them
+### Getting Started with MCP
 
-#### Real-Time Tracking Tools
+📖 **Complete setup instructions and tool reference:** [MCP Setup Guide](mcp-setup.md)
 
-**Start Tracking:**
+Quick start:
 
-```javascript
-await mcp.executeTool('temporal_mark_start_tracking', {
-  task: 'Implementing user authentication',
-  project: 'Web Application',
-  tags: 'backend,security',
-  notes: 'Working on JWT implementation',
-});
-```
+1. Test the server: `npm run mcp`
+2. Configure your AI assistant (Claude Code, Windsurf, etc.)
+3. Start using natural language to manage your time tracking
 
-**Finish Tracking:**
+### Alternative Integration Methods
 
-```javascript
-await mcp.executeTool('temporal_mark_finish_tracking', {
-  end: '16:30',
-  notes: 'Authentication system completed and tested',
-});
-```
-
-### Planned MCP Resources (Future Implementation)
-
-- **temporal://projects** - Complete project catalog with metadata
-- **temporal://time-logs/current** - Current fiscal year time data
-
-### Current AI Integration Options
-
-**Available Today:**
+In addition to MCP, Temporal Mark supports these integration methods:
 
 #### REST API Integration
 
@@ -1943,30 +1950,22 @@ fs.writeFileSync('batch-entries.json', JSON.stringify(entries));
 // Then: npm run tm -- add --file batch-entries.json
 ```
 
-### Future MCP Server Implementation
-
-To complete MCP integration, a future implementation would need:
-
-1. **MCP Server Setup** - Proper MCP protocol server implementation
-2. **Tool Registration** - Register the 6 defined tools with MCP runtime
-3. **Resource Endpoints** - Implement the 2 planned MCP resources
-4. **Authentication** - Add security for AI assistant access
-5. **Real-time Updates** - WebSocket or polling for live data
-
 ### Integration Benefits
 
-**Current Capabilities:**
+**All Integration Methods Provide:**
 
+- **Direct AI assistant integration** via MCP protocol (Claude Code, Windsurf, etc.)
 - **REST API** for web and mobile applications
 - **CLI automation** for scripts and workflows
 - **JSON processing** for bulk operations
 - **Manual editing** compatibility with Obsidian/Vim
 
-**Future MCP Capabilities:**
+**MCP-Specific Capabilities:**
 
-- **Direct AI assistant integration** via MCP protocol
-- **Automated workflow triggers** based on time tracking events
-- **Intelligent suggestions** from AI analysis of patterns
-- **Voice-activated time tracking** through AI assistants
+- **Natural language queries**: "How much time did I spend on development this week?"
+- **Automated time logging**: AI can add entries based on your work context
+- **Smart reporting**: Generate reports through conversational requests
+- **Real-time insights**: Ask questions about your productivity patterns
+- **Voice-activated tracking**: Start/stop time tracking through AI assistants
 
 This user guide provides comprehensive coverage of the Temporal Mark system including CLI, API, and AI integration capabilities. For specific command syntax, use `npm run tm -- --help` or `npm run tm -- <command> --help` for detailed help on any command.

@@ -68,14 +68,32 @@ class MarkdownDB {
       ];
 
       this.db.serialize(() => {
-        this.db.run(timeEntriesTable);
-        this.db.run(projectsTable);
-
-        indexQueries.forEach((query) => {
-          this.db.run(query);
+        this.db.run(timeEntriesTable, (err) => {
+          if (err) {
+            console.error('Error creating time_entries table:', err);
+          }
+        });
+        this.db.run(projectsTable, (err) => {
+          if (err) {
+            console.error('Error creating projects table:', err);
+          }
         });
 
-        resolve();
+        indexQueries.forEach((query) => {
+          this.db.run(query, (err) => {
+            if (err) {
+              console.error('Error creating index:', err);
+            }
+          });
+        });
+
+        // Use db.run with a completion callback to ensure all commands are done
+        this.db.run('SELECT 1', (err) => {
+          if (err) {
+            console.error('Database initialization check failed:', err);
+          }
+          resolve();
+        });
       });
     });
   }

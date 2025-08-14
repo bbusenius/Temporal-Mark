@@ -13,6 +13,7 @@ Temporal Mark combines the simplicity of Markdown with the power of automated an
 - **CLI interface**: Interactive prompts with non-interactive flags for automation
 - **Automated analysis**: Duration calculations, gap detection, and overlap validation
 - **Flexible reporting**: Group by projects, tags, or strategic goals with multiple output formats
+- **Auto-reindexing**: Automatically detects file changes and keeps database in sync
 - **Obsidian/Vim compatible**: Manual editing supported alongside CLI automation
 
 📖 **For detailed usage instructions, see the [User Guide](docs/user-guide.md)**
@@ -41,8 +42,8 @@ npm run format            # Format code with Prettier
 ## Documentation
 
 - **[User Guide](docs/user-guide.md)** - Comprehensive guide covering all features and workflows
+- **[MCP Setup Guide](docs/mcp-setup.md)** - AI assistant integration setup for Claude Code, Windsurf, etc.
 - **[Scalability Planning](docs/scalability.md)** - Future multi-user architecture and implementation roadmap
-- **[Vim/Editor Setup](docs/vim-setup.md)** - Configuration for Vim/Neovim integration
 
 ## Project Structure
 
@@ -70,7 +71,8 @@ temporal-mark/
 │   ├── reportFiscalYear.js     # Report generation
 │   ├── apiServer.js            # REST API server for web integration
 │   ├── startServer.js          # API server launcher script
-│   └── mcpIntegration.js       # Model Context Protocol integration
+│   ├── mcpIntegration.js       # Model Context Protocol integration layer
+│   └── mcpServer.js            # MCP server for AI assistant integration
 ├── test/                       # Testing utilities and documentation
 │   ├── manual-test-data-layer.js  # Manual testing script for data layer
 │   └── phase4-manual-testing.md   # Comprehensive testing guide
@@ -113,7 +115,7 @@ Redesign the company website to improve user experience and align with modern de
 
 ## Wiki-Link Support
 
-Projects are referenced using wiki-link syntax (`[[Project Name]]`) for Obsidian integration. The system provides comprehensive wiki-link support:
+Projects are referenced using wiki-link syntax (`[[Project Name]]`) for Vim and Obsidian integration. The system provides wiki-link support:
 
 ### Features
 
@@ -597,51 +599,76 @@ curl "http://localhost:3000/api/monthly/2025-07-15"
 - **Error handling**: Structured error responses
 - **Health checks**: `/health` endpoint for monitoring
 
-## AI Integration Readiness (MCP)
+## AI Integration (MCP)
 
-Temporal Mark is architecturally prepared for Model Context Protocol (MCP) integration through standardized interfaces and a compatibility layer.
+Temporal Mark includes full Model Context Protocol (MCP) integration, enabling direct AI assistant integration with Claude Code, Windsurf, and other MCP-compatible tools.
 
-### MCP Readiness Features
+### MCP Server Features
 
-- **Standardized API endpoints** compatible with MCP tool patterns
-- **JSON schema validation** for all operations
-- **MCP integration class** with tool definitions and resource schemas
-- **Structured error handling** with MCP-compatible responses
+- **Complete MCP server implementation** (`scripts/mcpServer.js`)
+- **12 MCP tools** with JSON schema validation
+- **2 MCP resources** for AI data discovery
+- **Plug-and-play setup** with configuration examples
 
-### Future MCP Implementation
+### MCP Quick Start
 
-The system includes an `mcpIntegration.js` module that defines:
+```bash
+# Test the MCP server
+npm run mcp
 
-1. **11 Available MCP Tools**:
-   - `temporal_mark_add_entry` - Add new time entries
-   - `temporal_mark_start_tracking` - Start real-time time tracking
-   - `temporal_mark_finish_tracking` - Finish active time entry
-   - `temporal_mark_get_daily_summary` - Get daily summaries
-   - `temporal_mark_get_project_summary` - Get project analysis
-   - `temporal_mark_get_tag_summary` - Get tag-based reporting
-   - `temporal_mark_generate_report` - Generate fiscal year reports
-   - `temporal_mark_validate_entry` - Validate entries without saving
-   - `temporal_mark_generate_date_range_report` - Generate custom date range reports
-   - `temporal_mark_generate_weekly_report` - Generate weekly reports
-   - `temporal_mark_generate_monthly_report` - Generate monthly reports
+# Add to your Claude Code configuration
+{
+  "mcpServers": {
+    "temporal-mark": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/temporal-mark/scripts/mcpServer.js"
+      ]
+    }
+  }
+}
+```
 
-2. **2 Planned MCP Resources**:
-   - `temporal://projects` - Complete project listings with metadata
-   - `temporal://time-logs/current` - Current fiscal year time log data
+📖 **Complete setup instructions:** [MCP Setup Guide](docs/mcp-setup.md)
 
-### Current Integration Options
+### Available MCP Tools
 
-**Available Now:**
+1. **temporal_mark_add_entry** - Add new time entries with validation
+2. **temporal_mark_start_tracking** - Start tracking time for a new task
+3. **temporal_mark_finish_tracking** - Finish the current active time entry
+4. **temporal_mark_create_project** - Create new projects with metadata
+5. **temporal_mark_get_daily_summary** - Get daily summaries with gap analysis
+6. **temporal_mark_get_project_summary** - Analyze project data and recent entries
+7. **temporal_mark_get_tag_summary** - Get tag-based insights and statistics
+8. **temporal_mark_generate_report** - Generate fiscal year reports with grouping
+9. **temporal_mark_validate_entry** - Validate entries without saving
+10. **temporal_mark_generate_date_range_report** - Custom date range analysis
+11. **temporal_mark_generate_weekly_report** - Weekly productivity summaries
+12. **temporal_mark_generate_monthly_report** - Monthly time tracking reports
 
+### MCP Resources
+
+- **temporal://projects** - Complete project catalog with metadata
+- **temporal://time-logs/current** - Current fiscal year time log entries
+
+### AI Assistant Capabilities
+
+Once configured, you can interact with AI assistants using natural language:
+
+- "Create a new project called 'Website Redesign 2025-2026' with departmental goals Marketing and Technology"
+- "Start tracking time for working on database optimization for the Website project"
+- "Finish the current time entry and add notes about completing the feature"
+- "Add a time entry for today from 9:00 to 10:30 working on database optimization"
+- "Show me my time entries for this week"
+- "Generate a monthly report grouped by project"
+- "How much time have I spent on development tasks?"
+
+### Integration Options
+
+- **MCP integration** for Claude Code, Windsurf, and other AI assistants
 - **REST API endpoints** for web applications and external systems
 - **CLI automation** with non-interactive flags for scripting
 - **JSON batch processing** for bulk operations
-
-**Future (MCP Server Implementation Needed):**
-
-- Direct AI assistant integration via MCP protocol
-- Automated workflow triggers
-- LLM-powered time tracking analysis
 
 ## Testing
 
@@ -717,10 +744,10 @@ npm run format
 ## System Capabilities
 
 - **Individual time tracking** with comprehensive CLI interface
+- **AI assistant integration** via full MCP protocol implementation
 - **REST API integration** for web applications and external systems
-- **AI assistant compatibility** via MCP protocol
 - **Obsidian/Vim integration** with manual file editing support
-- **Automated validation** and data integrity features
+- **Automated validation** and data integrity features with auto-reindexing
 - **Scalable architecture** ready for team and enterprise deployment
 
 ## Architecture

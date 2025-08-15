@@ -97,6 +97,7 @@ Once configured, your AI assistant will have access to these Temporal Mark tools
 ### Reporting
 
 - **temporal_mark_generate_report**: Create fiscal year reports with grouping
+- **temporal_mark_generate_since_report**: _AI-powered reports_ for work done since last occurrence of text (e.g., "team meeting")
 - **temporal_mark_generate_date_range_report**: Custom date range analysis
 - **temporal_mark_generate_weekly_report**: Weekly productivity summaries
 - **temporal_mark_generate_monthly_report**: Monthly time tracking reports
@@ -126,6 +127,22 @@ Once set up, you can interact with your AI assistant using natural language:
 "How much time have I spent on development tasks this month?"
 "What are my top 3 projects by hours logged this fiscal year?"
 ```
+
+### 🤖 AI-Powered Since Reports
+
+```
+"What have I accomplished since the last team meeting?"
+"Give me a summary of work done since lunch"
+"Show me progress since the last client meeting"
+"Summarize what I've completed since yesterday's team sync"
+```
+
+**With AI summarization enabled**, these requests will return intelligent syntheses like:
+
+- Project-organized summaries with key accomplishments
+- Focus on completed deliverables rather than individual tasks
+- Automatic filtering of unproductive time
+- Concise, meaningful progress reports perfect for status updates
 
 ### Project Management
 

@@ -20,6 +20,7 @@ Temporal Mark combines the simplicity of Markdown with the power of automated an
 - **Flexible reporting**: Group by projects, tags, or strategic goals with multiple output formats
 - **Auto-reindexing**: Automatically detects file changes and keeps database in sync
 - **Obsidian/Vim compatible**: Manual editing supported alongside CLI automation
+- **🤖 AI-Powered Reports**: Intelligent work summaries for reporting work done _since_ any milestone (e.g., "team meeting", "client call")
 
 📖 **For detailed usage instructions, see the [User Guide](docs/user-guide.md)**
 
@@ -611,7 +612,7 @@ Temporal Mark includes full Model Context Protocol (MCP) integration, enabling d
 ### MCP Server Features
 
 - **Complete MCP server implementation** (`scripts/mcpServer.js`)
-- **12 MCP tools** with JSON schema validation
+- **13 MCP tools** with JSON schema validation
 - **2 MCP resources** for AI data discovery
 - **Plug-and-play setup** with configuration examples
 
@@ -646,10 +647,11 @@ npm run mcp
 6. **temporal_mark_get_project_summary** - Analyze project data and recent entries
 7. **temporal_mark_get_tag_summary** - Get tag-based insights and statistics
 8. **temporal_mark_generate_report** - Generate fiscal year reports with grouping
-9. **temporal_mark_validate_entry** - Validate entries without saving
-10. **temporal_mark_generate_date_range_report** - Custom date range analysis
-11. **temporal_mark_generate_weekly_report** - Weekly productivity summaries
-12. **temporal_mark_generate_monthly_report** - Monthly time tracking reports
+9. **temporal_mark_generate_since_report** - AI-powered reports of work since specified text
+10. **temporal_mark_validate_entry** - Validate entries without saving
+11. **temporal_mark_generate_date_range_report** - Custom date range analysis
+12. **temporal_mark_generate_weekly_report** - Weekly productivity summaries
+13. **temporal_mark_generate_monthly_report** - Monthly time tracking reports
 
 ### MCP Resources
 

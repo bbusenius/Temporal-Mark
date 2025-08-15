@@ -555,6 +555,14 @@ npm run tm -- tag "documentation"
 
 Shows all entries tagged with a specific tag across all projects.
 
+#### Since Reports (AI-Powered)
+
+```bash
+npm run tm -- since "team meeting"
+```
+
+Shows work done since the last occurrence of specified text. Perfect for status updates and progress reports with optional AI summarization features.
+
 ## Interactive vs Non-Interactive Mode
 
 Both `add` and `start` commands now provide consistent interactive experiences with comprehensive prompts and intelligent suggestions.
@@ -1214,7 +1222,84 @@ summary: 'Breaks, personal time, and unproductive periods'
 
 ## Reporting
 
-Temporal Mark provides comprehensive reporting capabilities for both long-term fiscal year analysis and short-term date range tracking.
+Temporal Mark provides comprehensive reporting capabilities for both long-term fiscal year analysis and short-term date range tracking, plus AI-powered work summaries.
+
+### 🚀 Since Reports - AI-Powered!
+
+Generate intelligent reports of work done since the last occurrence of any text string in your task descriptions. Perfect for standup meetings, weekly reviews, or progress reports.
+
+#### Key Features
+
+- **🤖 AI-Powered Summaries**: Optional AI analysis that synthesizes your work into concise, meaningful summaries, when the MCP is used
+- **📊 Smart Project Filtering**: Automatically suppresses unproductive time, with optional custom filtering
+- **🔍 Flexible Search**: Find work since "standup meeting", "lunch", "break", or any custom milestone
+- **⚡ Multiple Formats**: Markdown (default), CSV, and JSON output
+
+#### Basic CLI Usage
+
+```bash
+# Work since last standup meeting
+npm run tm -- since "standup meeting"
+
+# Work since last lunch break
+npm run tm -- since "lunch"
+
+# Work since any custom text
+npm run tm -- since "client meeting"
+```
+
+#### 🤖 AI Summary Mode (MCP Integration)
+
+When used through AI assistants (Claude Code, Windsurf, etc.) with the MCP integration, you can enable intelligent summarization:
+
+```javascript
+// MCP tool call with AI summarization
+{
+  "searchString": "standup meeting",
+  "summarize": true,
+  "suppressProjects": "Non-Project"
+}
+```
+
+**What makes this powerful**: Instead of just listing every task, the AI analyzes your work and provides synthesized summaries like:
+
+> **Temporal Mark (9.25h)**  
+> Completed MCP server integration for AI assistants, enhanced documentation with terminal screenshots, and implemented time tracking rules.
+>
+> **Product Site (2.3h)**  
+> Resolved critical search functionality issues including term persistence during Turnstile challenges and HTML-encoded autocomplete problems.
+
+#### Advanced Options
+
+```bash
+# Suppress specific projects from the report
+npm run tm -- since "standup meeting" --suppress "Non-Project,VuFind"
+
+# Multiple project suppression
+npm run tm -- since "meeting" --suppress "Non-Project,Meetings,Unproductive"
+
+# Save report to file
+npm run tm -- since "standup meeting" --save
+
+# Different output formats
+npm run tm -- since "standup meeting" --format json
+npm run tm -- since "standup meeting" --format csv
+```
+
+#### Automatic Features
+
+- **Smart Filtering**: "Unproductive" projects are automatically suppressed
+- **Project-First Organization**: Each project is treated as a first-class citizen
+- **Complete Task Lists**: Shows ALL tasks (no arbitrary limits)
+- **Accurate Totals**: Hours and counts automatically recalculated after filtering
+
+#### Use Cases
+
+- **Daily Standups**: "What did I accomplish since yesterday's standup?"
+- **Progress Reports**: "What's been completed since the client meeting?"
+- **Status Updates**: "Show me work since the last team sync"
+
+This feature transforms routine status reporting from tedious task listing into intelligent work analysis!
 
 ### Date Range Reports (NEW)
 

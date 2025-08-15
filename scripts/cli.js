@@ -1024,6 +1024,62 @@ program
     }
   });
 
+// Since command
+program
+  .command('since <search-string>')
+  .description(
+    'Generate report of work done since the last occurrence of specified text'
+  )
+  .option('--format <format>', 'Output format (markdown|csv|json)', 'markdown')
+  .option(
+    '--suppress <projects>',
+    'Comma-separated list of project names to suppress from report'
+  )
+  .option('--save', 'Save report to file')
+  .action(async (searchString, options) => {
+    try {
+      const SinceReport = require('./reportSince');
+      const report = new SinceReport();
+      await report.initialize();
+
+      console.log(
+        chalk.blue(`Searching for last occurrence of: "${searchString}"`)
+      );
+
+      const reportContent = await report.generateReport(searchString, {
+        format: options.format,
+        suppressProjects: options.suppress,
+      });
+
+      if (options.save) {
+        const fs = require('fs');
+        const path = require('path');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `since-report-${searchString.replace(/[^a-z0-9]/gi, '-')}-${timestamp}.${options.format}`;
+        const filePath = path.join(__dirname, '../reports', filename);
+
+        // Ensure reports directory exists
+        const reportsDir = path.dirname(filePath);
+        if (!fs.existsSync(reportsDir)) {
+          fs.mkdirSync(reportsDir, { recursive: true });
+        }
+
+        fs.writeFileSync(filePath, reportContent);
+        console.log(chalk.green(`Report saved to: ${filePath}`));
+      } else {
+        console.log(reportContent);
+      }
+
+      await report.close();
+    } catch (error) {
+      console.error(
+        chalk.red('Failed to generate since report:'),
+        error.message
+      );
+      process.exit(1);
+    }
+  });
+
 // Validate command
 program
   .command('validate')

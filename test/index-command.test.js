@@ -259,11 +259,23 @@ Content here`;
         malformedProject
       );
 
-      const results = await dataIndexer.indexAllData();
+      // Suppress console output during this test to avoid noise in CI
+      const originalConsoleLog = console.log;
+      const originalConsoleError = console.error;
+      console.log = jest.fn();
+      console.error = jest.fn();
 
-      // Should still index the valid project but report error for malformed one
-      expect(results.projects.indexed).toBe(1);
-      expect(results.projects.errors.length).toBeGreaterThan(0);
+      try {
+        const results = await dataIndexer.indexAllData();
+
+        // Should still index the valid project but report error for malformed one
+        expect(results.projects.indexed).toBe(1);
+        expect(results.projects.errors.length).toBeGreaterThan(0);
+      } finally {
+        // Restore console functions
+        console.log = originalConsoleLog;
+        console.error = originalConsoleError;
+      }
     });
 
     test('should handle empty time log files', async () => {

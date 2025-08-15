@@ -295,6 +295,34 @@ class MCPIntegration {
           },
         },
         {
+          name: 'temporal_mark_generate_since_report',
+          description:
+            'Generate report of work done since the last occurrence of specified text in task descriptions',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              searchString: {
+                type: 'string',
+                minLength: 1,
+                description:
+                  'Text to search for in task descriptions (e.g., "standup meeting", "lunch", "break")',
+              },
+              suppressProjects: {
+                type: 'string',
+                description:
+                  'Comma-separated list of project names to suppress from report (Unproductive always suppressed)',
+              },
+              summarize: {
+                type: 'boolean',
+                default: false,
+                description:
+                  'When true, AI should provide a concise summary instead of full task details',
+              },
+            },
+            required: ['searchString'],
+          },
+        },
+        {
           name: 'temporal_mark_validate_entry',
           description: 'Validate a time entry without saving it',
           inputSchema: {
@@ -521,6 +549,9 @@ class MCPIntegration {
 
         case 'temporal_mark_generate_report':
           return this.generateReport(args);
+
+        case 'temporal_mark_generate_since_report':
+          return this.generateSinceReport(args);
 
         case 'temporal_mark_validate_entry':
           return this.validateEntry(args);
@@ -978,6 +1009,74 @@ class MCPIntegration {
         },
         mcpCompatible: true,
       };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        mcpCompatible: true,
+      };
+    }
+  }
+
+  /**
+   * Generate since report via MCP interface
+   * @async
+   * @param {Object} args - Report parameters
+   * @returns {Promise<Object>} Report result
+   */
+  async generateSinceReport(args) {
+    const { searchString, suppressProjects = '', summarize = false } = args;
+
+    try {
+      const SinceReport = require('./reportSince');
+      const reportGen = new SinceReport();
+
+      // Use the MCP integration's dataIndexer if available
+      if (this.dataIndexer && this.dataIndexer.db) {
+        reportGen.indexer = this.dataIndexer;
+      } else {
+        await reportGen.initialize();
+      }
+
+      const report = await reportGen.generateReport(searchString, {
+        format: 'json',
+        suppressProjects,
+      });
+
+      // Only close if we initialized our own indexer
+      if (!this.dataIndexer || !this.dataIndexer.db) {
+        await reportGen.close();
+      }
+
+      const reportData = JSON.parse(report);
+
+      const response = {
+        success: true,
+        data: {
+          searchString,
+          generatedAt: new Date().toISOString(),
+          suppressProjects,
+          summarize,
+          lastOccurrence: reportData.lastOccurrence,
+          summary: reportData.summary,
+          projects: reportData.projects,
+          dateRange: reportData.dateRange,
+        },
+        mcpCompatible: true,
+      };
+
+      // Add instruction for AI summarization if requested
+      if (summarize) {
+        response.data.aiInstructions =
+          'Please provide a concise summary organized by project. Each project should be listed as its own section ' +
+          'with the project name as the header followed by hours in parentheses. Do NOT group projects under ' +
+          'arbitrary categories - treat each project as a first-class citizen. For each project, synthesize the ' +
+          'individual tasks into 1-3 key accomplishments or themes rather than listing each task separately. ' +
+          'Focus on what was actually achieved or completed, not just activities performed. Only group tasks if ' +
+          'they genuinely represent the same accomplishment.';
+      }
+
+      return response;
     } catch (error) {
       return {
         success: false,

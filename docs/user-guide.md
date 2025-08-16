@@ -1376,14 +1376,49 @@ npm run tm -- report 2025-2026 --format csv --group-by strategicDirection
 
 # JSON format with sorting and saving
 npm run tm -- report 2025-2026 --format json --sort hours --save
+
+# Show all tasks instead of just top 3
+npm run tm -- report 2025-2026 --top-tasks 0
+
+# Suppress specific projects from the report (Unproductive always suppressed)
+npm run tm -- report 2025-2026 --suppress-projects "Non-Project,Internal Meetings"
 ```
+
+#### 🤖 AI Summary Mode for Fiscal Reports (MCP Integration)
+
+When used through AI assistants (Claude Code, Windsurf, etc.) with the MCP integration, fiscal year reports can generate intelligent summaries of your annual work:
+
+```javascript
+// MCP tool call with AI summarization
+{
+  "fiscalYear": "2025-2026",
+  "summarize": true,
+  "suppressProjects": "Non-Project,Internal Meetings",
+  "groupBy": "departmentalGoal"
+}
+```
+
+**What makes this powerful**: Instead of raw task lists, the AI analyzes your entire fiscal year and provides synthesized summaries by departmental goal like:
+
+> ## Departmental Goal: Technology
+>
+> ### Temporal Mark Development (127.5h)
+>
+> Completed comprehensive MCP server integration for AI assistants, implemented advanced reporting capabilities with project suppression and task filtering, and enhanced the overall system architecture for production scalability.
+>
+> ### VuFind Catalog Maintenance (89.2h)
+>
+> Resolved critical search functionality issues, improved user interface responsiveness, and implemented automated deployment processes that reduced maintenance overhead by 40%.
+
+This transforms annual reviews from tedious task enumeration into strategic work analysis!
 
 ### Report Options (All Report Types)
 
 - **Group by**: `departmentalGoal`, `strategicDirection`, `tag`
 - **Format**: `markdown`, `csv`, `json`
 - **Sort**: `date`, `alpha`, `hours`
-- **Top tasks**: `--top-tasks 5` (shows top N tasks per project)
+- **Top tasks**: `--top-tasks 5` (shows top N tasks per project, use 0 for all tasks)
+- **Suppress projects**: `--suppress-projects "Project1,Project2"` (excludes specific projects, Unproductive always suppressed)
 - **Save**: `--save` flag saves report to `reports/` directory
 
 ### Understanding Reports

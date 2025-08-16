@@ -137,12 +137,22 @@ Once set up, you can interact with your AI assistant using natural language:
 "Summarize what I've completed since yesterday's team sync"
 ```
 
+### 🤖 AI-Powered Fiscal Year Reports
+
+```
+"Generate an AI summary of my 2025-2026 fiscal year work"
+"Summarize my annual accomplishments by departmental goal"
+"Create a strategic work analysis for the current fiscal year"
+"Give me an executive summary of this year's project outcomes"
+```
+
 **With AI summarization enabled**, these requests will return intelligent syntheses like:
 
-- Project-organized summaries with key accomplishments
+- **Since Reports**: Project-organized summaries with key accomplishments since any milestone
+- **Fiscal Year Reports**: Strategic analysis of annual work organized by departmental goals
 - Focus on completed deliverables rather than individual tasks
 - Automatic filtering of unproductive time
-- Concise, meaningful progress reports perfect for status updates
+- Transform raw task lists into executive-ready accomplishment summaries
 
 ### Project Management
 

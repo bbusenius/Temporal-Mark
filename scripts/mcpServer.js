@@ -108,6 +108,23 @@ class TemporalMarkMCPServer {
       try {
         const result = await this.mcpIntegration.executeTool(name, args || {});
 
+        // For fiscal year reports, return the markdown directly to avoid JSON truncation
+        if (
+          name === 'temporal_mark_generate_report' &&
+          result.success &&
+          result.data &&
+          result.data.reportType === 'markdown'
+        ) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: result.data.report,
+              },
+            ],
+          };
+        }
+
         return {
           content: [
             {

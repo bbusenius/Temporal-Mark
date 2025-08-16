@@ -27,17 +27,25 @@ class FiscalYearReport {
         format = 'markdown',
         sort = 'date',
         topTasks = 3,
+        suppressProjects = '',
       } = options;
 
       // Get all data for the fiscal year
-      const reportData = await this.gatherReportData(fiscalYear);
+      const reportData = await this.gatherReportData(fiscalYear, options);
 
       if (reportData.totalEntries === 0) {
         throw new Error(`No time entries found for fiscal year ${fiscalYear}`);
       }
 
+      // Apply project suppression
+      const suppressedProjects = this.parseSuppressedProjects(suppressProjects);
+      const filteredReportData = this.applySuppression(
+        reportData,
+        suppressedProjects
+      );
+
       // Group projects according to groupBy option
-      const groupedData = this.groupProjectData(reportData, groupBy);
+      const groupedData = this.groupProjectData(filteredReportData, groupBy);
 
       // Sort projects within each group
       const sortedData = this.sortGroupedData(groupedData, sort);
@@ -48,19 +56,28 @@ class FiscalYearReport {
         case 'markdown':
           output = this.generateMarkdownReport(
             sortedData,
-            reportData,
+            filteredReportData,
             fiscalYear,
             { groupBy, topTasks }
           );
           break;
         case 'csv':
-          output = this.generateCSVReport(sortedData, reportData, fiscalYear);
+          output = this.generateCSVReport(
+            sortedData,
+            filteredReportData,
+            fiscalYear
+          );
           break;
         case 'json':
-          output = this.generateJSONReport(sortedData, reportData, fiscalYear, {
-            groupBy,
-            topTasks,
-          });
+          output = this.generateJSONReport(
+            sortedData,
+            filteredReportData,
+            fiscalYear,
+            {
+              groupBy,
+              topTasks,
+            }
+          );
           break;
         default:
           throw new Error(
@@ -79,7 +96,7 @@ class FiscalYearReport {
   /**
    * Gather all data needed for the report
    */
-  async gatherReportData(fiscalYear) {
+  async gatherReportData(fiscalYear, options = {}) {
     // Get all projects
     const projects = await this.dataIndexer.getAllProjectSummaries();
 
@@ -112,7 +129,10 @@ class FiscalYearReport {
           totalHours > 0 ? (projectHours / totalHours) * 100 : 0;
 
         // Get top tasks for this project
-        const topTasks = this.getTopTasksForProject(projectEntries, 3);
+        const topTasks = this.getTopTasksForProject(
+          projectEntries,
+          options.topTasks !== undefined ? options.topTasks : 3
+        );
 
         return {
           ...project,
@@ -154,14 +174,15 @@ class FiscalYearReport {
       taskHours[entry.task].dates.push(entry.date);
     });
 
-    // Sort by total hours and return top N
-    return Object.values(taskHours)
+    // Sort by total hours and return top N (or all if count is 0)
+    const sortedTasks = Object.values(taskHours)
       .sort((a, b) => b.totalHours - a.totalHours)
-      .slice(0, count)
       .map((task) => ({
         ...task,
         dates: [...new Set(task.dates)].sort(),
       }));
+
+    return count === 0 ? sortedTasks : sortedTasks.slice(0, count);
   }
 
   /**
@@ -232,15 +253,15 @@ class FiscalYearReport {
     const currentDate = new Date().toISOString().split('T')[0];
 
     let markdown = `# Fiscal Year Report ${fiscalYear}\n\n`;
-    markdown += `Generated on: ${currentDate}\\n`;
-    markdown += `Report Period: Up to ${currentDate}\\n\\n`;
+    markdown += `Generated on: ${currentDate}\n`;
+    markdown += `Report Period: Up to ${currentDate}\n\n`;
 
     // Summary statistics
-    markdown += `## Summary\\n\\n`;
-    markdown += `- **Total Hours Logged**: ${reportData.totalHours}h\\n`;
-    markdown += `- **Total Entries**: ${reportData.totalEntries}\\n`;
-    markdown += `- **Active Projects**: ${reportData.projects.length}\\n`;
-    markdown += `- **Grouped By**: ${this.getGroupByDisplayName(groupBy)}\\n\\n`;
+    markdown += `## Summary\n\n`;
+    markdown += `- **Total Hours Logged**: ${reportData.totalHours}h\n`;
+    markdown += `- **Total Entries**: ${reportData.totalEntries}\n`;
+    markdown += `- **Active Projects**: ${reportData.projects.length}\n`;
+    markdown += `- **Grouped By**: ${this.getGroupByDisplayName(groupBy)}\n\n`;
 
     // Group sections
     const groupKeys = Object.keys(groupedData).sort();
@@ -253,27 +274,36 @@ class FiscalYearReport {
           ? (groupHours / reportData.totalHours) * 100
           : 0;
 
-      markdown += `## ${this.getGroupByDisplayName(groupBy)}: ${groupKey}\\n\\n`;
-      markdown += `**Group Total**: ${groupHours}h (${groupPercentage.toFixed(1)}% of total)\\n\\n`;
+      markdown += `## ${this.getGroupByDisplayName(groupBy)}: ${groupKey}\n\n`;
+      markdown += `**Group Total**: ${groupHours}h (${groupPercentage.toFixed(1)}% of total)\n\n`;
 
       projects.forEach((project) => {
-        markdown += `### [[${project.project_name}]]\\n\\n`;
-        markdown += `- **Total Hours**: ${project.projectHours}h\\n`;
-        markdown += `- **Percentage of Total**: ${project.percentage.toFixed(1)}%\\n`;
-        markdown += `- **Description**: ${this.truncateText(project.summary || 'No description available', 100)}\\n`;
+        markdown += `### ${project.project_name}\n\n`;
+        markdown += `- **Total Hours**: ${project.projectHours}h\n`;
+        markdown += `- **Percentage of Total**: ${project.percentage.toFixed(1)}%\n`;
+        markdown += `- **Description**: ${this.truncateText(project.summary || 'No description available', 100)}\n`;
 
-        if (topTasks > 0 && project.topTasks.length > 0) {
-          markdown += `- **Key Tasks** (Top ${Math.min(topTasks, project.topTasks.length)}):\\n`;
-          project.topTasks.slice(0, topTasks).forEach((task) => {
+        if (project.topTasks.length > 0) {
+          const tasksToShow =
+            topTasks === 0
+              ? project.topTasks
+              : project.topTasks.slice(0, topTasks);
+          const taskHeader =
+            topTasks === 0
+              ? `- **All Tasks** (${project.topTasks.length} tasks):`
+              : `- **Key Tasks** (Top ${Math.min(topTasks, project.topTasks.length)}):`;
+
+          markdown += `${taskHeader}\n`;
+          tasksToShow.forEach((task) => {
             const dateRange =
               task.dates.length > 1
                 ? `${task.dates[0]} to ${task.dates[task.dates.length - 1]}`
                 : task.dates[0];
-            markdown += `  - ${dateRange}: ${task.task} (${task.totalHours}h)\\n`;
+            markdown += `  - ${dateRange}: ${task.task} (${task.totalHours}h)\n`;
           });
         }
 
-        markdown += `\\n`;
+        markdown += `\n`;
       });
     });
 
@@ -296,7 +326,7 @@ class FiscalYearReport {
       'FiscalYear',
     ];
 
-    let csv = `${headers.join(',')}\\n`;
+    let csv = `${headers.join(',')}\n`;
 
     // Flatten all entries from all projects
     const allEntries = [];
@@ -331,7 +361,7 @@ class FiscalYearReport {
         `"${this.escapeCsvField(project.summary || '')}"`,
         fiscalYear,
       ];
-      csv += `${row.join(',')}\\n`;
+      csv += `${row.join(',')}\n`;
     });
 
     return csv;
@@ -374,7 +404,7 @@ class FiscalYearReport {
           tags: project.tags || [],
           startDate: project.start_date,
           status: project.status,
-          topTasks: project.topTasks.slice(0, options.topTasks || 3),
+          topTasks: project.topTasks,
           entries: project.entries.map((entry) => ({
             date: entry.date,
             startTime: entry.startTime,
@@ -411,6 +441,54 @@ class FiscalYearReport {
   escapeCsvField(field) {
     if (!field) return '';
     return field.toString().replace(/"/g, '""');
+  }
+
+  /**
+   * Parse the comma-separated list of projects to suppress
+   * @param {string} suppressProjects - Comma-separated project names
+   * @returns {Set} Set of project names to suppress
+   */
+  parseSuppressedProjects(suppressProjects) {
+    const suppressedSet = new Set(['Unproductive']); // Always suppress Unproductive
+
+    if (suppressProjects) {
+      const projects = suppressProjects
+        .split(',')
+        .map((p) => p.trim())
+        .filter((p) => p.length > 0);
+      projects.forEach((project) => suppressedSet.add(project));
+    }
+
+    return suppressedSet;
+  }
+
+  /**
+   * Apply suppression filtering to report data
+   * @param {Object} reportData - Report data with projects array
+   * @param {Set} suppressedProjects - Set of project names to suppress
+   * @returns {Object} Filtered report data with suppressed projects removed
+   */
+  applySuppression(reportData, suppressedProjects) {
+    const filteredProjects = reportData.projects.filter(
+      (project) => !suppressedProjects.has(project.project_name)
+    );
+
+    // Recalculate totals for filtered data
+    const totalHours = filteredProjects.reduce(
+      (sum, project) => sum + project.projectHours,
+      0
+    );
+    const totalEntries = filteredProjects.reduce(
+      (sum, project) => sum + project.projectEntries,
+      0
+    );
+
+    return {
+      ...reportData,
+      projects: filteredProjects,
+      totalHours,
+      totalEntries,
+    };
   }
 
   /**

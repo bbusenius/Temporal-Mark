@@ -395,7 +395,12 @@ program
   )
   .option('--format <format>', 'Output format (markdown|csv|json)', 'markdown')
   .option('--sort <sort>', 'Sort order (alpha|hours|date)', 'date')
-  .option('--top-tasks <n>', 'Number of top tasks to show', '3')
+  .option('--top-tasks <n>', 'Number of top tasks to show (0 for all)', '0')
+  .option(
+    '--suppress-projects <projects>',
+    'Comma-separated list of project names to suppress (Unproductive always suppressed)',
+    ''
+  )
   .option('--save', 'Save report to file')
   .action(async (fiscalYear, options) => {
     try {
@@ -415,6 +420,7 @@ program
         format: options.format,
         sort: options.sort,
         topTasks: parseInt(options.topTasks, 10),
+        suppressProjects: options.suppressProjects,
       });
 
       if (options.save) {
@@ -425,7 +431,7 @@ program
         );
         console.log(chalk.green(`Report saved to: ${filePath}`));
       } else {
-        console.log(`\\n${chalk.blue('Report Output:')}`);
+        console.log(`\n${chalk.blue('Report Output:')}`);
         console.log('='.repeat(50));
         console.log(reportContent);
       }

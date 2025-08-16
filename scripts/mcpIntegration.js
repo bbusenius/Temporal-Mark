@@ -290,6 +290,17 @@ class MCPIntegration {
                 default: 3,
                 description: 'Number of top tasks to show per project',
               },
+              suppressProjects: {
+                type: 'string',
+                description:
+                  'Comma-separated list of project names to suppress from report (Unproductive always suppressed)',
+              },
+              summarize: {
+                type: 'boolean',
+                default: false,
+                description:
+                  'Whether to provide an AI-generated summary of work accomplished by project instead of the full report',
+              },
             },
             required: ['fiscalYear'],
           },
@@ -984,31 +995,69 @@ class MCPIntegration {
       groupBy = 'departmentalGoal',
       sort = 'hours',
       topTasks = 3,
+      suppressProjects = '',
+      summarize = false,
     } = args;
 
     try {
       const ReportGenerator = require('./reportFiscalYear');
       const reportGen = new ReportGenerator();
 
+      // Choose format and topTasks based on summarize option
+      const format = summarize ? 'json' : 'markdown';
+      const actualTopTasks = summarize ? 0 : 0; // Always show all tasks for fiscal reports
+
       const report = await reportGen.generateReport(fiscalYear, {
         groupBy,
-        format: 'json',
+        format,
         sort,
-        topTasks,
+        topTasks: actualTopTasks,
+        suppressProjects,
+        summarize,
       });
 
-      return {
+      const response = {
         success: true,
         data: {
           fiscalYear,
           generatedAt: new Date().toISOString(),
           groupBy,
           sort,
-          topTasks,
-          report,
+          topTasks: actualTopTasks,
+          summarize,
+          reportType: format,
         },
         mcpCompatible: true,
       };
+
+      if (summarize) {
+        // Parse JSON report and structure data for AI summarization
+        const reportData = JSON.parse(report);
+        response.data.summary = reportData.summary;
+        response.data.groups = reportData.groups;
+        response.data.aiInstructions =
+          `Create a fiscal year summary report with this EXACT structure:\n\n` +
+          Object.keys(reportData.groups)
+            .map((groupName) => {
+              const group = reportData.groups[groupName];
+              return (
+                `## Departmental Goal: ${groupName}\n\n` +
+                group.projects
+                  .map(
+                    (project) =>
+                      `### ${project.name} (${project.hours}h)\n[Write a thoughtful paragraph summarizing the key accomplishments and work completed for this project]\n`
+                  )
+                  .join('\n')
+              );
+            })
+            .join('\n') +
+          `\n\nIMPORTANT: Use the exact project names and hours shown above. Do not change names or combine projects. ` +
+          `For each project, write a well-crafted paragraph that synthesizes the work done into a coherent summary focusing on outcomes and achievements.`;
+      } else {
+        response.data.report = report;
+      }
+
+      return response;
     } catch (error) {
       return {
         success: false,

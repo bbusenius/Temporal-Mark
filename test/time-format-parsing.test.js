@@ -223,4 +223,57 @@ describe('Time Format Parsing and Validation', () => {
       });
     });
   });
+
+  describe('Date header parsing with trailing spaces', () => {
+    test('should parse date headers with trailing spaces', () => {
+      const dateHeaders = [
+        '### 2025-08-16',
+        '### 2025-08-16 ',
+        '### 2025-08-16  ',
+        '### 2025-08-16\t',
+      ];
+
+      dateHeaders.forEach((header) => {
+        const match = header.match(parser.dateHeaderRegex);
+        expect(match).toBeTruthy();
+        expect(match[1]).toBe('2025-08-16');
+      });
+    });
+
+    test('should correctly parse time log with trailing spaces in date headers', () => {
+      const timeLogContent = `# Time Log 2025-2026
+
+### 2025-08-15
+- **09:00-10:15**: task on 15th [[Test Project]] [testing]
+
+### 2025-08-16 
+- **10:00-13:45**: task on 16th with trailing space [[Test Project]] [testing]
+
+### 2025-08-17  
+- **14:00-15:00**: task on 17th with multiple trailing spaces [[Test Project]] [testing]`;
+
+      const tempFile = path.join(__dirname, 'temp-trailing-space-test.md');
+
+      try {
+        fs.writeFileSync(tempFile, timeLogContent);
+        const entries = parser.parseTimeLogFile(tempFile);
+
+        const aug15Entries = entries.filter((e) => e.date === '2025-08-15');
+        const aug16Entries = entries.filter((e) => e.date === '2025-08-16');
+        const aug17Entries = entries.filter((e) => e.date === '2025-08-17');
+
+        expect(aug15Entries).toHaveLength(1);
+        expect(aug16Entries).toHaveLength(1);
+        expect(aug17Entries).toHaveLength(1);
+
+        expect(aug15Entries[0].startTime).toBe('09:00');
+        expect(aug16Entries[0].startTime).toBe('10:00');
+        expect(aug17Entries[0].startTime).toBe('14:00');
+      } finally {
+        if (fs.existsSync(tempFile)) {
+          fs.unlinkSync(tempFile);
+        }
+      }
+    });
+  });
 });

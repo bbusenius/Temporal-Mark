@@ -27,7 +27,7 @@ class TimeDataParser {
     this.timeEntryRegex =
       /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?\s*(?:-\s(.+?))?\s*$/;
     this.notesRegex = /^ {2}- Notes: (.+)$/;
-    this.dateHeaderRegex = /^### (\d{4}-\d{2}-\d{2})$/;
+    this.dateHeaderRegex = /^### (\d{4}-\d{2}-\d{2})\s*$/;
 
     // Regex to detect non-zero-padded time entries that need fixing
     this.nonZeroPaddedRegex =

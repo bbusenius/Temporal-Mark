@@ -297,7 +297,7 @@ class WikiLinkValidator {
     return name
       .trim()
       .replace(/[<>:"/\\|?*]/g, '-') // Replace invalid filename chars
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\s+/g, ' ') // Normalize whitespace but preserve spaces
       .replace(/^\.+|\.+$/g, '') // Remove leading/trailing dots
       .slice(0, 100); // Limit length
   }

@@ -1,15 +1,15 @@
 # Temporal Mark
 
-A sophisticated time tracking ecosystem that bridges human-readable Markdown files with powerful automation. Temporal Mark delivers the immediacy of manual editing, the efficiency of a comprehensive CLI, and seamless AI integration through MCP, making time tracking as natural as taking notes, yet as powerful as enterprise analytics.
+A time tracking ecosystem that bridges human-readable Markdown files with powerful automation. Temporal Mark delivers the immediacy of manual editing, efficiency of a comprehensive CLI, and seamless AI integration through MCP, making time tracking as natural as taking notes, yet with the power and sophistication of machine intelligence. Optional AI summarization distills key achievements into clear, strategic reports, making it a snap to document and communicate your accomplishments.
 
 ![Temporal Mark Workflow](docs/images/workflow-demo.png)
 _Complete workflow demonstration: Interactive CLI entry → Seamless AI integration via Claude Code → Human-readable Markdown storage → Instant analytics_
 
-If you don't want to use AI or the CLI, you can still use Temporal Mark by manually creating and editing Markdown files.
+Temporal Mark is designed to be as flexible as possible. If you don't want to use AI or the CLI for logging time, you can still use Temporal Mark by manually creating and editing Markdown files. As long as your files are formatted correctly, you will still have access to all of the reporting functionality that Temporal Mark provides.
 
 ## Overview
 
-Temporal Mark combines the simplicity of Markdown with the power of automated analysis. It stores time logs in human-readable Markdown files while providing a CLI interface for data entry and sophisticated reporting capabilities.
+Temporal Mark stores time logs in human-readable Markdown files while providing a CLI interface for data entry and detailed reporting capabilities.
 
 ### Key Features
 
@@ -771,7 +771,3 @@ The system is designed to be:
 - **Tool-agnostic**: Compatible with Obsidian, Vim, and other text editors
 - **Automation-friendly**: Non-interactive CLI flags for AI and script integration
 - **Scalable**: Modular design supports future web UI and multi-user features
-
-## Contributing
-
-This project follows a phased development approach. See `tasks/todo.md` for current implementation status and next steps.

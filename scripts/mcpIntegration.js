@@ -1120,9 +1120,11 @@ class MCPIntegration {
           'Please provide a concise summary organized by project. Each project should be listed as its own section ' +
           'with the project name as the header followed by hours in parentheses. Do NOT group projects under ' +
           'arbitrary categories - treat each project as a first-class citizen. For each project, synthesize the ' +
-          'individual tasks into 1-3 key accomplishments or themes rather than listing each task separately. ' +
-          'Focus on what was actually achieved or completed, not just activities performed. Only group tasks if ' +
-          'they genuinely represent the same accomplishment.';
+          'individual tasks into 1-3 key accomplishments or themes and write a thoughtful paragraph summarizing ' +
+          'the key accomplishments of work completed. Focus on what was actually achieved or completed, not just ' +
+          'activities performed. Only group tasks if they genuinely represent the same accomplishment. Do not ' +
+          'write in the second person voice. Do not make value judgements about the work done unless the original ' +
+          'task description contains value judgements. Keep your opinion out of it. Just report the facts.';
       }
 
       return response;

@@ -1119,12 +1119,14 @@ class MCPIntegration {
         response.data.aiInstructions =
           'Please provide a concise summary organized by project. Each project should be listed as its own section ' +
           'with the project name as the header followed by hours in parentheses. Do NOT group projects under ' +
-          'arbitrary categories - treat each project as a first-class citizen. For each project, synthesize the ' +
-          'individual tasks into 1-3 key accomplishments or themes and write a thoughtful paragraph summarizing ' +
-          'the key accomplishments of work completed. Focus on what was actually achieved or completed, not just ' +
-          'activities performed. Only group tasks if they genuinely represent the same accomplishment. Do not ' +
-          'write in the second person voice. Do not make value judgements about the work done unless the original ' +
-          'task description contains value judgements. Keep your opinion out of it. Just report the facts.';
+          'arbitrary categories - treat each project as a first-class citizen. Do not skip projects. All projects mentioned ' +
+          'should appear in the report at least once. For each project, synthesize the ' +
+          'individual tasks into key accomplishments or themes and write a thoughtfully about ' +
+          'the work completed. Do not summarize task by task, instead focus on all of the work accomplished and summarize ' +
+          'the main activities. Focus on what was actually achieved or completed, not just ' +
+          'activities performed. Tasks can have tags like this: [[]]. Tasks tagged as "important" should not be ignored and ' +
+          'must be mentioned. Do not write in the second person. Do not make value judgements about the work done unless ' +
+          'the original task description contains value judgements. Keep your opinion out of it. Just report the facts.';
       }
 
       return response;

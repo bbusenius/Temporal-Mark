@@ -24,8 +24,10 @@ class TimeDataParser {
   constructor() {
     // Updated regex to handle both completed entries and [ACTIVE] entries
     // Also handles entries without projects (optional [[project]])
+    // Removed inline notes pattern to fix parsing of task descriptions containing dashes
+    // Changed project/tags patterns to use [^\]]+ instead of .+? to allow square brackets in task descriptions
     this.timeEntryRegex =
-      /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[(.+?)\]\])?(?:\s\[(.+?)\])?\s*(?:-\s(.+?))?\s*$/;
+      /^- \*\*(\d{2}:\d{2})-(\d{2}:\d{2}|\[ACTIVE\])\*\*: (.+?)(?:\s\[\[([^\]]+)\]\])?(?:\s\[([^\]]+)\])?\s*$/;
     this.notesRegex = /^ {2}- Notes: (.+)$/;
     this.dateHeaderRegex = /^### (\d{4}-\d{2}-\d{2})\s*$/;
 
@@ -199,8 +201,7 @@ class TimeDataParser {
       // Check for time entry
       const entryMatch = line.match(this.timeEntryRegex);
       if (entryMatch && currentDate) {
-        const [, startTime, endTime, task, project, tagsStr, notesStr] =
-          entryMatch;
+        const [, startTime, endTime, task, project, tagsStr] = entryMatch;
 
         // Handle [ACTIVE] entries differently
         if (endTime === '[ACTIVE]') {
@@ -232,7 +233,7 @@ class TimeDataParser {
           task: task.trim(),
           project: project ? project.trim() : null,
           tags,
-          notes: notesStr ? notesStr.trim() : null,
+          notes: null,
           lineNumber: i + 1,
         };
 

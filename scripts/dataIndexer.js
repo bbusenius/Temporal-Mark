@@ -25,10 +25,15 @@ class DataIndexer {
    * @constructor
    * @param {string} [rootDir] - Root project directory (default: parent directory)
    */
-  constructor(rootDir = path.join(__dirname, '..'), dbPath = null) {
+  constructor(
+    rootDir = path.join(__dirname, '..'),
+    dbPath = null,
+    options = {}
+  ) {
     this.rootDir = rootDir;
     this.projectsDir = path.join(rootDir, 'projects');
     this.timeLogsDir = path.join(rootDir, 'time-logs');
+    this.logger = options.logger || console;
 
     this.db = new MarkdownDB(
       dbPath || path.join(rootDir, 'db/markdownDB.sqlite')
@@ -53,7 +58,7 @@ class DataIndexer {
       try {
         const timeEntryCount = await this.db.getTimeEntryCount();
         if (timeEntryCount === 0) {
-          console.log(
+          this.logger.log(
             'Database is empty. Auto-indexing from Markdown files...'
           );
           await this.indexAllData();
@@ -63,7 +68,7 @@ class DataIndexer {
           const filesTimestamp = await this.getNewestFileTime();
 
           if (!dbTimestamp || filesTimestamp > dbTimestamp) {
-            console.log(
+            this.logger.log(
               '📁 Files changed since last index. Auto-reindexing...'
             );
             await this.indexAllData();
@@ -71,7 +76,7 @@ class DataIndexer {
         }
       } catch (error) {
         // If error checking count, database might be corrupted - try to index anyway
-        console.log('Database check failed. Attempting to index data...');
+        this.logger.log('Database check failed. Attempting to index data...');
         await this.indexAllData();
       }
     }
@@ -133,7 +138,9 @@ class DataIndexer {
       }
     } catch (error) {
       // If we can't read directories, return current time to force reindex
-      console.warn('Warning: Could not check file timestamps, forcing reindex');
+      this.logger.warn(
+        'Warning: Could not check file timestamps, forcing reindex'
+      );
       return new Date();
     }
 
@@ -149,12 +156,12 @@ class DataIndexer {
    * @throws {Error} When fatal indexing errors occur
    */
   async indexAllData() {
-    console.log('Starting data indexing...');
+    this.logger.log('Starting data indexing...');
 
     // Clear existing data first
-    console.log('Clearing existing database data...');
+    this.logger.log('Clearing existing database data...');
     await this.db.clearAllData();
-    console.log('✓ Database cleared');
+    this.logger.log('✓ Database cleared');
 
     const results = {
       projects: { indexed: 0, errors: [] },
@@ -170,7 +177,7 @@ class DataIndexer {
       const timeLogResults = await this.indexTimeLogs();
       results.timeEntries = timeLogResults;
 
-      console.log(
+      this.logger.log(
         `Indexing complete. Projects: ${results.projects.indexed}, Time entries: ${results.timeEntries.indexed}`
       );
 
@@ -178,15 +185,15 @@ class DataIndexer {
         results.projects.errors.length > 0 ||
         results.timeEntries.errors.length > 0
       ) {
-        console.log('Errors encountered during indexing:');
+        this.logger.log('Errors encountered during indexing:');
         [...results.projects.errors, ...results.timeEntries.errors].forEach(
           (error) => {
-            console.error(`- ${error}`);
+            this.logger.error(`- ${error}`);
           }
         );
       }
     } catch (error) {
-      console.error('Fatal error during indexing:', error.message);
+      this.logger.error('Fatal error during indexing:', error.message);
       throw error;
     }
 
@@ -201,7 +208,7 @@ class DataIndexer {
    * @returns {Promise<Object>} Project indexing results with counts and errors
    */
   async indexProjects() {
-    console.log('Indexing projects...');
+    this.logger.log('Indexing projects...');
 
     const results = { indexed: 0, errors: [] };
 
@@ -227,7 +234,7 @@ class DataIndexer {
         try {
           await this.db.insertProject(project);
           results.indexed++;
-          console.log(`✓ Indexed project: ${project.projectName}`);
+          this.logger.log(`✓ Indexed project: ${project.projectName}`);
           // Small delay to ensure database stability
           await new Promise((resolve) => {
             setTimeout(() => resolve(), 10);
@@ -236,7 +243,7 @@ class DataIndexer {
           results.errors.push(
             `Database error for project ${project.projectName}: ${error.message}`
           );
-          console.error(
+          this.logger.error(
             `✗ Failed to index ${project.projectName}: ${error.message}`
           );
         }
@@ -258,7 +265,7 @@ class DataIndexer {
    * @returns {Promise<Object>} Time log indexing results with counts and errors
    */
   async indexTimeLogs() {
-    console.log('Indexing time logs...');
+    this.logger.log('Indexing time logs...');
 
     const results = { indexed: 0, errors: [] };
 
@@ -294,7 +301,7 @@ class DataIndexer {
             }
           }
 
-          console.log(
+          this.logger.log(
             `✓ Indexed ${entries.length} entries from ${path.basename(filePath)}`
           );
         } catch (error) {
@@ -463,7 +470,7 @@ class DataIndexer {
    * @returns {Promise<Object>} Fresh indexing results
    */
   async refreshIndex() {
-    console.log('Refreshing index...');
+    this.logger.log('Refreshing index...');
 
     // Close and reinitialize database to clear data
     await this.db.close();

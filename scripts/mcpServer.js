@@ -9,6 +9,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { Console } = require('console');
 
 // Ensure we're running from the correct directory
 const scriptDir = __dirname;
@@ -43,6 +44,13 @@ function envFlagEnabled(name) {
   );
 }
 
+function createStderrLogger() {
+  return new Console({
+    stdout: process.stderr,
+    stderr: process.stderr,
+  });
+}
+
 async function loadMCPDependencies() {
   // Import from the package exports
   const serverModule = await import(
@@ -69,8 +77,9 @@ async function loadMCPDependencies() {
 class TemporalMarkMCPServer {
   constructor() {
     this.mcpIntegration = new MCPIntegration({
-      enableLogging: false, // Disable console logs for MCP
+      enableLogging: false,
       logLevel: 'error',
+      logger: createStderrLogger(),
       skipAutoReindex: envFlagEnabled('TEMPORAL_MARK_SKIP_STARTUP_REINDEX'),
     });
     this.server = null; // Will be initialized in start()

@@ -41,7 +41,10 @@ class MCPIntegration {
       ...options,
     };
 
-    this.dataIndexer = new DataIndexer();
+    this.logger = options.logger || console;
+    this.dataIndexer = new DataIndexer(undefined, null, {
+      logger: this.logger,
+    });
     this.timeTracker = new TimeTracker({ silent: true });
     this.validator = new InputValidator();
     this.wikiValidator = new WikiLinkValidator();
@@ -88,7 +91,7 @@ class MCPIntegration {
         shouldReindex = true;
       }
     } catch (error) {
-      console.error('Error checking file changes:', error.message);
+      this.logger.error('Error checking file changes:', error.message);
       shouldReindex = true;
     }
 
@@ -96,7 +99,7 @@ class MCPIntegration {
       return false;
     }
 
-    console.error('📁 Files changed, re-indexing for MCP operation...');
+    this.logger.error('📁 Files changed, re-indexing for MCP operation...');
 
     try {
       await this.dataIndexer.indexAllData();
@@ -654,7 +657,7 @@ class MCPIntegration {
       await this.ensureFreshData();
 
       // Create AddEntry instance with fresh database state
-      const addEntry = new AddEntry();
+      const addEntry = new AddEntry({ logger: this.logger });
       await addEntry.initialize();
 
       // Create entry object
@@ -768,7 +771,7 @@ class MCPIntegration {
       });
 
       if (this.options.enableLogging) {
-        console.log(`MCP: Started tracking "${task}"`);
+        this.logger.log(`MCP: Started tracking "${task}"`);
       }
 
       return {
@@ -820,7 +823,9 @@ class MCPIntegration {
       });
 
       if (this.options.enableLogging) {
-        console.log(`MCP: Finished tracking with duration: ${result.duration}`);
+        this.logger.log(
+          `MCP: Finished tracking with duration: ${result.duration}`
+        );
       }
 
       return {
@@ -1706,7 +1711,7 @@ class MCPIntegration {
       );
 
       if (this.options.enableLogging) {
-        console.log(`MCP: Created project "${projectName}"`);
+        this.logger.log(`MCP: Created project "${projectName}"`);
       }
 
       return {

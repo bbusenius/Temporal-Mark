@@ -29,8 +29,11 @@ class AddEntry {
    * Initialize the AddEntry instance with all required validators and processors
    * @constructor
    */
-  constructor() {
-    this.dataIndexer = new DataIndexer();
+  constructor(options = {}) {
+    this.logger = options.logger || console;
+    this.dataIndexer = new DataIndexer(undefined, null, {
+      logger: this.logger,
+    });
     this.timeParser = new TimeDataParser();
     this.wikiValidator = new WikiLinkValidator();
     this.tagStandardizer = new TagStandardizer();
@@ -82,7 +85,7 @@ class AddEntry {
 
       // Add the entry
       const result = await this.saveEntry(entryData);
-      console.log(
+      this.logger.log(
         chalk.green(
           `✓ Added time entry: ${entryData.task} (${entryData.durationHours}h)`
         )
@@ -90,7 +93,7 @@ class AddEntry {
 
       return result;
     } catch (error) {
-      console.error(chalk.red('Error adding entry:'), error.message);
+      this.logger.error(chalk.red('Error adding entry:'), error.message);
       errorLogger.logError(error, {
         operation: 'ADD_ENTRY',
         options,
@@ -138,14 +141,14 @@ class AddEntry {
       // eslint-disable-next-line no-await-in-loop
       const result = await this.saveEntry(processedEntry);
       results.push(result);
-      console.log(
+      this.logger.log(
         chalk.green(
           `✓ Added: ${processedEntry.task} (${processedEntry.durationHours}h)`
         )
       );
     }
 
-    console.log(
+    this.logger.log(
       chalk.blue(`\nBatch complete: ${results.length} entries added`)
     );
     return results;
@@ -174,8 +177,8 @@ class AddEntry {
    * Process interactive mode with inquirer prompts
    */
   async processInteractive(options = {}) {
-    console.log(chalk.blue('Interactive Time Entry'));
-    console.log('======================\n');
+    this.logger.log(chalk.blue('Interactive Time Entry'));
+    this.logger.log('======================\n');
 
     // Get available projects and tags for suggestions
     const projects = await this.dataIndexer.getAllProjectSummaries();
@@ -314,7 +317,7 @@ class AddEntry {
    * Validate and process entry data
    */
   async validateAndProcessEntry(entry) {
-    console.log(chalk.blue('\n🔍 Validating entry...'));
+    this.logger.log(chalk.blue('\n🔍 Validating entry...'));
 
     // Get existing entries for overlap detection
     const existingEntries = await this.dataIndexer.db.getTimeEntriesForDate(
@@ -338,7 +341,7 @@ class AddEntry {
       validationResults.errors.length > 0 ||
       validationResults.warnings.length > 0
     ) {
-      console.log(
+      this.logger.log(
         `\n${this.inputValidator.formatValidationResults(validationResults)}`
       );
     }
@@ -351,7 +354,7 @@ class AddEntry {
 
     // Show summary for warnings
     if (validationResults.warnings.length > 0) {
-      console.log(
+      this.logger.log(
         chalk.yellow(
           `\n📋 ${validationResults.warnings.length} warning(s) detected`
         )
@@ -384,7 +387,7 @@ class AddEntry {
     // Handle wiki-links (create missing projects)
     await this.handleWikiLinksInEntry(entry);
 
-    console.log(chalk.green('✅ Validation completed successfully'));
+    this.logger.log(chalk.green('✅ Validation completed successfully'));
 
     return {
       ...entry,
@@ -401,16 +404,18 @@ class AddEntry {
 
     if (!this.wikiValidator.projectExists(entry.project)) {
       try {
-        console.log(
+        this.logger.log(
           chalk.blue(`📝 Creating project file for: ${entry.project}`)
         );
         await this.wikiValidator.createProjectForWikiLink(entry.project);
-        console.log(chalk.green(`✓ Created project file: ${entry.project}.md`));
+        this.logger.log(
+          chalk.green(`✓ Created project file: ${entry.project}.md`)
+        );
       } catch (error) {
-        console.log(
+        this.logger.log(
           chalk.yellow(`⚠️  Could not create project file: ${error.message}`)
         );
-        console.log(
+        this.logger.log(
           chalk.gray(
             "   Project will still be saved but won't have a project file"
           )

@@ -73,6 +73,22 @@ The server should respond with a list of available tools and then keep running.
 
 3. **Restart Claude Code or refresh MCP servers** to load the new configuration.
 
+#### Codex Configuration
+
+If Codex runs MCP servers in a read-only sandbox, prevent startup from trying
+to refresh the SQLite index during the MCP handshake:
+
+```toml
+[mcp_servers.temporal-mark]
+command = "node"
+args = ["/absolute/path/to/your/temporal-mark/scripts/mcpServer.js"]
+env = { TEMPORAL_MARK_SKIP_STARTUP_REINDEX = "true" }
+```
+
+With this setting, MCP startup is read-only. Tool calls still check whether the
+Markdown files are newer than the database and will re-index when running in a
+writable environment.
+
 ## Available MCP Tools
 
 Once configured, your AI assistant will have access to these Temporal Mark tools:

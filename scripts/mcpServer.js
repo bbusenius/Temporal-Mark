@@ -37,6 +37,12 @@ let ListToolsRequestSchema;
 let ListResourcesRequestSchema;
 let ReadResourceRequestSchema;
 
+function envFlagEnabled(name) {
+  return ['1', 'true', 'yes', 'on'].includes(
+    String(process.env[name] || '').toLowerCase()
+  );
+}
+
 async function loadMCPDependencies() {
   // Import from the package exports
   const serverModule = await import(
@@ -65,6 +71,7 @@ class TemporalMarkMCPServer {
     this.mcpIntegration = new MCPIntegration({
       enableLogging: false, // Disable console logs for MCP
       logLevel: 'error',
+      skipAutoReindex: envFlagEnabled('TEMPORAL_MARK_SKIP_STARTUP_REINDEX'),
     });
     this.server = null; // Will be initialized in start()
   }

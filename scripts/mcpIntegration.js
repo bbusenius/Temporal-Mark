@@ -12,6 +12,15 @@ const InputValidator = require('./inputValidator');
 const WikiLinkValidator = require('./wikiLinkValidator');
 const errorLogger = require('./errorLogger');
 
+function isReadOnlyDatabaseError(error) {
+  return (
+    error &&
+    (error.code === 'SQLITE_READONLY' ||
+      error.code === 'EROFS' ||
+      /readonly|read-only/i.test(error.message || ''))
+  );
+}
+
 /**
  * MCP Integration Layer for Temporal Mark
  * Provides standardized interfaces for AI/MCP systems to interact
@@ -23,6 +32,7 @@ class MCPIntegration {
    * @param {Object} options - Configuration options
    * @param {boolean} options.enableLogging - Enable detailed logging (default: true)
    * @param {string} options.logLevel - Log level: 'error', 'warn', 'info', 'debug' (default: 'info')
+   * @param {boolean} options.skipAutoReindex - Skip startup reindexing; tool calls still check freshness
    */
   constructor(options = {}) {
     this.options = {
@@ -48,7 +58,9 @@ class MCPIntegration {
     if (this.isInitialized) return;
 
     try {
-      await this.dataIndexer.initialize();
+      await this.dataIndexer.initialize({
+        skipAutoReindex: this.options.skipAutoReindex === true,
+      });
       this.isInitialized = true;
 
       if (this.options.enableLogging) {
@@ -66,21 +78,37 @@ class MCPIntegration {
    * @returns {Promise<boolean>} True if reindexing occurred
    */
   async ensureFreshData() {
+    let shouldReindex = false;
+
     try {
       const dbTimestamp = await this.dataIndexer.getLastIndexTime();
       const filesTimestamp = await this.dataIndexer.getNewestFileTime();
 
       if (!dbTimestamp || filesTimestamp > dbTimestamp) {
-        console.error('📁 Files changed, re-indexing for MCP operation...');
-        await this.dataIndexer.indexAllData();
-        return true;
+        shouldReindex = true;
       }
-      return false;
     } catch (error) {
       console.error('Error checking file changes:', error.message);
-      // If we can't check, force reindex to be safe
+      shouldReindex = true;
+    }
+
+    if (!shouldReindex) {
+      return false;
+    }
+
+    console.error('📁 Files changed, re-indexing for MCP operation...');
+
+    try {
       await this.dataIndexer.indexAllData();
       return true;
+    } catch (error) {
+      if (isReadOnlyDatabaseError(error)) {
+        throw new Error(
+          'Temporal Mark data is stale, but this MCP session cannot re-index because the database or filesystem is read-only. Rebuild the index from a writable shell, then restart the MCP client.'
+        );
+      }
+
+      throw error;
     }
   }
 

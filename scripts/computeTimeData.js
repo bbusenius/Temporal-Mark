@@ -236,8 +236,7 @@ class TimeDataParser {
           );
 
           if (trailingProject) {
-            parsedTask =
-              trailingProject[1].trim() || trailingProject[2].trim();
+            parsedTask = trailingProject[1].trim() || trailingProject[2].trim();
             parsedProject = trailingProject[2].trim();
           }
         }

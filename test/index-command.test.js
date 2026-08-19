@@ -178,8 +178,9 @@ Test time log for index command testing.
     test('should preserve the previous index when a rebuild fails', async () => {
       await dataIndexer.indexAllData();
 
-      const originalInsert =
-        dataIndexer.db.insertTimeEntry.bind(dataIndexer.db);
+      const originalInsert = dataIndexer.db.insertTimeEntry.bind(
+        dataIndexer.db
+      );
       let insertCount = 0;
       const insertSpy = jest
         .spyOn(dataIndexer.db, 'insertTimeEntry')

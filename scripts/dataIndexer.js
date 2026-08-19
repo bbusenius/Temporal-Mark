@@ -158,17 +158,22 @@ class DataIndexer {
   async indexAllData() {
     this.logger.log('Starting data indexing...');
 
-    // Clear existing data first
-    this.logger.log('Clearing existing database data...');
-    await this.db.clearAllData();
-    this.logger.log('✓ Database cleared');
-
     const results = {
       projects: { indexed: 0, errors: [] },
       timeEntries: { indexed: 0, errors: [] },
     };
+    let transactionStarted = false;
 
     try {
+      // Serialize rebuilds and keep the previous complete index available if
+      // this process is interrupted before the replacement is ready.
+      await this.db.beginTransaction();
+      transactionStarted = true;
+
+      this.logger.log('Clearing existing database data...');
+      await this.db.clearAllData();
+      this.logger.log('✓ Database cleared');
+
       // Index projects first
       const projectResults = await this.indexProjects();
       results.projects = projectResults;
@@ -176,10 +181,6 @@ class DataIndexer {
       // Index time logs
       const timeLogResults = await this.indexTimeLogs();
       results.timeEntries = timeLogResults;
-
-      this.logger.log(
-        `Indexing complete. Projects: ${results.projects.indexed}, Time entries: ${results.timeEntries.indexed}`
-      );
 
       if (
         results.projects.errors.length > 0 ||
@@ -192,7 +193,31 @@ class DataIndexer {
           }
         );
       }
+
+      if (results.timeEntries.errors.length > 0) {
+        throw new Error(
+          `Time log indexing failed with ${results.timeEntries.errors.length} error(s)`
+        );
+      }
+
+      await this.db.commitTransaction();
+      transactionStarted = false;
+
+      this.logger.log(
+        `Indexing complete. Projects: ${results.projects.indexed}, Time entries: ${results.timeEntries.indexed}`
+      );
     } catch (error) {
+      if (transactionStarted) {
+        try {
+          await this.db.rollbackTransaction();
+        } catch (rollbackError) {
+          this.logger.error(
+            'Failed to roll back incomplete index:',
+            rollbackError.message
+          );
+        }
+      }
+
       this.logger.error('Fatal error during indexing:', error.message);
       throw error;
     }

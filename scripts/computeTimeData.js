@@ -225,13 +225,35 @@ class TimeDataParser {
         // Parse tags
         const tags = this.parseTags(tagsStr);
 
+        let parsedTask = task.trim();
+        let parsedProject = project ? project.trim() : null;
+
+        // Recover a trailing project link when it was typed without the
+        // conventional separating space (for example, "task[[Project]]").
+        if (!parsedProject) {
+          const trailingProject = parsedTask.match(
+            /^(.*?)\s*\[\[([^\]]+)\]\]$/
+          );
+
+          if (trailingProject) {
+            parsedTask =
+              trailingProject[1].trim() || trailingProject[2].trim();
+            parsedProject = trailingProject[2].trim();
+          }
+        }
+
+        // Projects are optional in the Markdown format, while the database
+        // requires one. Keep those entries reportable instead of silently
+        // losing them during indexing.
+        parsedProject = parsedProject || 'Non-Project';
+
         currentEntry = {
           date: currentDate,
           startTime,
           endTime,
           durationHours,
-          task: task.trim(),
-          project: project ? project.trim() : null,
+          task: parsedTask,
+          project: parsedProject,
           tags,
           notes: null,
           lineNumber: i + 1,

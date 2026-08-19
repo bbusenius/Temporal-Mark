@@ -174,6 +174,31 @@ Test time log for index command testing.
       const deletedEntry = entries.find((e) => e.task === 'First task');
       expect(deletedEntry).toBeFalsy();
     });
+
+    test('should preserve the previous index when a rebuild fails', async () => {
+      await dataIndexer.indexAllData();
+
+      const originalInsert =
+        dataIndexer.db.insertTimeEntry.bind(dataIndexer.db);
+      let insertCount = 0;
+      const insertSpy = jest
+        .spyOn(dataIndexer.db, 'insertTimeEntry')
+        .mockImplementation(async (entry) => {
+          insertCount += 1;
+          if (insertCount === 2) {
+            throw new Error('simulated indexing interruption');
+          }
+          return originalInsert(entry);
+        });
+
+      await expect(dataIndexer.indexAllData()).rejects.toThrow(
+        'Time log indexing failed'
+      );
+      insertSpy.mockRestore();
+
+      const entryCount = await dataIndexer.db.getTimeEntryCount();
+      expect(entryCount).toBe(3);
+    });
   });
 
   describe('Data Synchronization', () => {

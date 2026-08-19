@@ -71,7 +71,7 @@ class SinceReport {
       const query = `
         SELECT date, start_time as startTime, end_time as endTime, task, project, tags, notes, duration_hours as durationHours
         FROM time_entries 
-        WHERE (date > ? OR (date = ? AND start_time > ?))
+        WHERE (date > ? OR (date = ? AND start_time >= ?))
         ORDER BY date ASC, start_time ASC
       `;
 

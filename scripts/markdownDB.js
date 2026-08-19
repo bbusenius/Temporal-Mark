@@ -20,6 +20,7 @@ class MarkdownDB {
         if (err) {
           reject(err);
         } else {
+          this.db.configure('busyTimeout', 30000);
           this.createTables().then(resolve).catch(reject);
         }
       });
@@ -101,7 +102,7 @@ class MarkdownDB {
   async insertTimeEntry(entry) {
     return new Promise((resolve, reject) => {
       const query = `
-        INSERT OR IGNORE INTO time_entries 
+        INSERT INTO time_entries
         (date, start_time, end_time, duration_hours, task, project, tags, notes)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
@@ -122,6 +123,42 @@ class MarkdownDB {
           reject(err);
         } else {
           resolve({ id: this.lastID, ...entry });
+        }
+      });
+    });
+  }
+
+  async beginTransaction() {
+    return new Promise((resolve, reject) => {
+      this.db.run('BEGIN IMMEDIATE TRANSACTION', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async commitTransaction() {
+    return new Promise((resolve, reject) => {
+      this.db.run('COMMIT', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  async rollbackTransaction() {
+    return new Promise((resolve, reject) => {
+      this.db.run('ROLLBACK', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
         }
       });
     });

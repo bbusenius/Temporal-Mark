@@ -180,6 +180,23 @@ describe('SinceReport', () => {
       expect(entries[0].startTime).toBe('14:00');
       expect(entries[0].task).toBe('standup meeting discussion');
     });
+
+    test('should include work starting when the occurrence ends', async () => {
+      await report.indexer.db.insertTimeEntry({
+        date: '2025-07-16',
+        startTime: '15:00',
+        endTime: '15:30',
+        durationHours: 0.5,
+        task: 'work immediately after meeting',
+        project: 'Project Alpha',
+        tags: [],
+        notes: null,
+      });
+
+      const entries = await report.getEntriesSince('2025-07-16', '15:00');
+
+      expect(entries[0].task).toBe('work immediately after meeting');
+    });
   });
 
   describe('groupEntriesByProject', () => {
@@ -188,8 +205,8 @@ describe('SinceReport', () => {
       const grouped = await report.groupEntriesByProject(entries);
 
       expect(grouped.projects).toHaveLength(4);
-      expect(grouped.totalHours).toBe(6.5);
-      expect(grouped.totalEntries).toBe(5);
+      expect(grouped.totalHours).toBe(8.5);
+      expect(grouped.totalEntries).toBe(6);
 
       // Should be sorted by hours (descending)
       const alphaProject = grouped.projects.find(
@@ -205,14 +222,14 @@ describe('SinceReport', () => {
         (p) => p.project === 'Unproductive'
       );
 
-      expect(alphaProject.totalHours).toBe(2.0);
+      expect(alphaProject.totalHours).toBe(4.0);
       expect(betaProject.totalHours).toBe(2.5);
       expect(meetingsProject.totalHours).toBe(1.0);
       expect(unproductiveProject.totalHours).toBe(1.0);
 
       // Should be sorted by total hours (descending)
-      expect(grouped.projects[0].project).toBe('Project Beta');
-      expect(grouped.projects[1].project).toBe('Project Alpha');
+      expect(grouped.projects[0].project).toBe('Project Alpha');
+      expect(grouped.projects[1].project).toBe('Project Beta');
     });
 
     test('should handle empty entries array', async () => {

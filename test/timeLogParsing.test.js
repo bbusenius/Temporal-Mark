@@ -102,6 +102,35 @@ describe('Time Log Parsing Edge Cases', () => {
     expect(secondEntry.tags).toEqual(['css', 'bug-fix']);
   });
 
+  test('should parse a trailing project link without separating whitespace', () => {
+    const testContent = `# Time Log 2026-2027
+
+### 2026-08-17
+- **09:15-10:15**: email and meeting preparation[[Non-Project]]`;
+
+    fs.writeFileSync(tempFile, testContent, 'utf8');
+
+    const entries = parser.parseTimeLogFile(tempFile);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].task).toBe('email and meeting preparation');
+    expect(entries[0].project).toBe('Non-Project');
+  });
+
+  test('should default entries without a project to Non-Project', () => {
+    const testContent = `# Time Log 2026-2027
+
+### 2026-08-17
+- **09:15-10:15**: email and meeting preparation`;
+
+    fs.writeFileSync(tempFile, testContent, 'utf8');
+
+    const entries = parser.parseTimeLogFile(tempFile);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].project).toBe('Non-Project');
+  });
+
   test('should parse task descriptions with square brackets correctly', async () => {
     const testContent = `# Time Log 2025-2026
 
